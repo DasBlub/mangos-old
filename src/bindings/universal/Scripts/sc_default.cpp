@@ -95,25 +95,25 @@ bool AreaTrigger_default(Player* /*player*/, AreaTriggerEntry* /*atEntry*/ )
 
 void AddSC_default()
 {
-    Script *newscript;
+    Script* pNewscript;
 
-    newscript = new Script;
-    newscript->Name="default";
-    newscript->pGossipHello          = &GossipHello_default;
-    newscript->pQuestAccept          = &QuestAccept_default;
-    newscript->pGossipSelect         = &GossipSelect_default;
-    newscript->pGossipSelectWithCode = &GossipSelectWithCode_default;
-    newscript->pQuestSelect          = &QuestSelect_default;
-    newscript->pQuestComplete        = &QuestComplete_default;
-    newscript->pNPCDialogStatus      = &NPCDialogStatus_default;
-    newscript->pGODialogStatus       = &GODialogStatus_default;
-    newscript->pChooseReward         = &ChooseReward_default;
-    newscript->pItemHello            = &ItemHello_default;
-    newscript->pGOHello              = &GOHello_default;
-    newscript->pAreaTrigger          = &AreaTrigger_default;
-    newscript->pItemQuestAccept      = &ItemQuestAccept_default;
-    newscript->pGOQuestAccept        = &GOQuestAccept_default;
-    newscript->pGOChooseReward       = &GOChooseReward_default;
+    pNewscript = new Script;
+    pNewscript->sName="default";
+    pNewscript->pGossipHello          = &GossipHello_default;
+    pNewscript->pQuestAccept          = &QuestAccept_default;
+    pNewscript->pGossipSelect         = &GossipSelect_default;
+    pNewscript->pGossipSelectWithCode = &GossipSelectWithCode_default;
+    pNewscript->pQuestSelect          = &QuestSelect_default;
+    pNewscript->pQuestComplete        = &QuestComplete_default;
+    pNewscript->pNPCDialogStatus      = &NPCDialogStatus_default;
+    pNewscript->pGODialogStatus       = &GODialogStatus_default;
+    pNewscript->pChooseReward         = &ChooseReward_default;
+    pNewscript->pItemHello            = &ItemHello_default;
+    pNewscript->pGOHello              = &GOHello_default;
+    pNewscript->pAreaTrigger          = &AreaTrigger_default;
+    pNewscript->pItemQuestAccept      = &ItemQuestAccept_default;
+    pNewscript->pGOQuestAccept        = &GOQuestAccept_default;
+    pNewscript->pGOChooseReward       = &GOChooseReward_default;
 
-    newscript->registerSelf();
+    pNewscript->registerSelf();
 }

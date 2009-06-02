@@ -37,6 +37,7 @@ class Map;
 
 struct Script
 {
+public:
     Script() :
         pGossipHello(NULL), pQuestAccept(NULL), pGossipSelect(NULL), pGossipSelectWithCode(NULL),
         pQuestSelect(NULL), pQuestComplete(NULL), pNPCDialogStatus(NULL), pGODialogStatus(NULL), pChooseReward(NULL),
@@ -45,79 +46,70 @@ struct Script
         pEffectDummyItem(NULL), GetAI(NULL)
     {}
 
-    std::string Name;
+    std::string sName;
 
     // -- Quest/gossip Methods to be scripted --
-    bool (*pGossipHello         )(Player *player, Creature *_Creature);
-    bool (*pQuestAccept         )(Player *player, Creature *_Creature, Quest const*_Quest );
-    bool (*pGossipSelect        )(Player *player, Creature *_Creature, uint32 sender, uint32 action );
-    bool (*pGossipSelectWithCode)(Player *player, Creature *_Creature, uint32 sender, uint32 action, const char* sCode );
-    bool (*pQuestSelect         )(Player *player, Creature *_Creature, Quest const*_Quest );
-    bool (*pQuestComplete       )(Player *player, Creature *_Creature, Quest const*_Quest );
-    uint32 (*pNPCDialogStatus   )(Player *player, Creature *_Creature );
-    uint32 (*pGODialogStatus    )(Player *player, GameObject * _GO );
-    bool (*pChooseReward        )(Player *player, Creature *_Creature, Quest const*_Quest, uint32 opt );
-    bool (*pItemHello           )(Player *player, Item *_Item, Quest const*_Quest );
-    bool (*pGOHello             )(Player *player, GameObject *_GO );
-    bool (*pAreaTrigger         )(Player *player, AreaTriggerEntry* at);
-    bool (*pItemQuestAccept     )(Player *player, Item *_Item, Quest const*_Quest );
-    bool (*pGOQuestAccept       )(Player *player, GameObject *_GO, Quest const*_Quest );
-    bool (*pGOChooseReward      )(Player *player, GameObject *_GO, Quest const*_Quest, uint32 opt );
-    bool (*pItemUse             )(Player *player, Item* _Item, SpellCastTargets const& targets);
+    bool (*pGossipHello         )(Player* pPlayer, Creature* pCreature);
+    bool (*pQuestAccept         )(Player* pPlayer, Creature* pCreature, Quest const* pQuest );
+    bool (*pGossipSelect        )(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction );
+    bool (*pGossipSelectWithCode)(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction, const char* sCode );
+    bool (*pQuestSelect         )(Player* pPlayer, Creature* pCreature, Quest const* pQuest );
+    bool (*pQuestComplete       )(Player* pPlayer, Creature* pCreature, Quest const* pQuest );
+    uint32 (*pNPCDialogStatus   )(Player* pPlayer, Creature* pCreature );
+    uint32 (*pGODialogStatus    )(Player* pPlayer, GameObject* pGO );
+    bool (*pChooseReward        )(Player* pPlayer, Creature* pCreature, Quest const* pQuest, uint32 opt );
+    bool (*pItemHello           )(Player* pPlayer, Item* pItem, Quest const* pQuest );
+    bool (*pGOHello             )(Player* pPlayer, GameObject* pGO );
+    bool (*pAreaTrigger         )(Player* pPlayer, AreaTriggerEntry* pAt);
+    bool (*pItemQuestAccept     )(Player* pPlayer, Item* pItem, Quest const*pQuest );
+    bool (*pGOQuestAccept       )(Player* pPlayer, GameObject *pGO, Quest const*pQuest );
+    bool (*pGOChooseReward      )(Player* pPlayer, GameObject *pGO, Quest const*pQuest, uint32 uiOpt );
+    bool (*pItemUse             )(Player* pPlayer, Item* pItem, SpellCastTargets const& spcTargets);
     bool (*pEffectDummyGameObj  )(Unit*, uint32, uint32, GameObject* );
     bool (*pEffectDummyCreature )(Unit*, uint32, uint32, Creature* );
     bool (*pEffectDummyItem     )(Unit*, uint32, uint32, Item* );
 
-    CreatureAI* (*GetAI)(Creature *_Creature);
+    CreatureAI* (*GetAI)(Creature* pCreature);
     InstanceData* (*GetInstanceData)(Map*);
     // -----------------------------------------
 
     void registerSelf();
 };
 
-#define VISIBLE_RANGE (50.0f)
+const float VISIBLE_RANGE = 50.0f;
 
 // Read function descriptions in CreatureAI
-struct MANGOS_DLL_DECL ScriptedAI : public CreatureAI
+class MANGOS_DLL_DECL ScriptedAI : public CreatureAI
 {
-    explicit ScriptedAI(Creature* creature) : CreatureAI(creature) {}
+public:
+    explicit ScriptedAI(Creature* pCreature) : CreatureAI(pCreature) {}
     ~ScriptedAI() {}
 
     // Called at stopping attack by any attacker
     void EnterEvadeMode();
 
     // Is unit visible for MoveInLineOfSight
-    bool IsVisible(Unit* who) const
+    bool IsVisible(Unit* pWho) const
     {
-        return !who->HasStealthAura() && m_creature->IsWithinDist(who,VISIBLE_RANGE);
+        return !pWho->HasStealthAura() && m_creature->IsWithinDist(pWho, VISIBLE_RANGE);
     }
 
     // Called at World update tick
-    void UpdateAI(const uint32);
+    void UpdateAI(const uint32 uiDiff);
 
     //= Some useful helpers =========================
 
     // Start attack of victim and go to him
-    void DoStartAttack(Unit* victim);
+    void DoStartAttack(Unit* pVictim);
 
     // Stop attack of current victim
     void DoStopAttack();
 
     // Cast spell
-    void DoCast(Unit* victim, uint32 spelId)
-    {
-        m_creature->CastSpell(victim,spelId,true);
-    }
+    void DoCast(Unit* pVictim, uint32 uiSpellId);
+    void DoCastSpell(Unit* pVictim, SpellEntry* pSpellInfo);
 
-    void DoCastSpell(Unit* who,SpellEntry *spellInfo)
-    {
-        m_creature->CastSpell(who,spellInfo,true);
-    }
-
-    void DoSay(int32 text_id, uint32 language)
-    {
-        m_creature->Say(text_id,language,0);
-    }
+    void DoSay(int32 iTextId, uint32 uiLanguage);
 
     void DoGoHome();
 };
