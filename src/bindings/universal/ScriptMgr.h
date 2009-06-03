@@ -37,7 +37,6 @@ class Map;
 
 struct Script
 {
-public:
     Script() :
         pGossipHello(NULL), pQuestAccept(NULL), pGossipSelect(NULL), pGossipSelectWithCode(NULL),
         pQuestSelect(NULL), pQuestComplete(NULL), pNPCDialogStatus(NULL), pGODialogStatus(NULL), pChooseReward(NULL),
@@ -49,28 +48,28 @@ public:
     std::string sName;
 
     // -- Quest/gossip Methods to be scripted --
-    bool (*pGossipHello         )(Player* pPlayer, Creature* pCreature);
-    bool (*pQuestAccept         )(Player* pPlayer, Creature* pCreature, Quest const* pQuest );
-    bool (*pGossipSelect        )(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction );
-    bool (*pGossipSelectWithCode)(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction, const char* sCode );
-    bool (*pQuestSelect         )(Player* pPlayer, Creature* pCreature, Quest const* pQuest );
-    bool (*pQuestComplete       )(Player* pPlayer, Creature* pCreature, Quest const* pQuest );
-    uint32 (*pNPCDialogStatus   )(Player* pPlayer, Creature* pCreature );
-    uint32 (*pGODialogStatus    )(Player* pPlayer, GameObject* pGO );
-    bool (*pChooseReward        )(Player* pPlayer, Creature* pCreature, Quest const* pQuest, uint32 opt );
-    bool (*pItemHello           )(Player* pPlayer, Item* pItem, Quest const* pQuest );
-    bool (*pGOHello             )(Player* pPlayer, GameObject* pGO );
-    bool (*pAreaTrigger         )(Player* pPlayer, AreaTriggerEntry* pAt);
-    bool (*pItemQuestAccept     )(Player* pPlayer, Item* pItem, Quest const*pQuest );
-    bool (*pGOQuestAccept       )(Player* pPlayer, GameObject *pGO, Quest const*pQuest );
-    bool (*pGOChooseReward      )(Player* pPlayer, GameObject *pGO, Quest const*pQuest, uint32 uiOpt );
-    bool (*pItemUse             )(Player* pPlayer, Item* pItem, SpellCastTargets const& spcTargets);
-    bool (*pEffectDummyGameObj  )(Unit*, uint32, uint32, GameObject* );
-    bool (*pEffectDummyCreature )(Unit*, uint32, uint32, Creature* );
-    bool (*pEffectDummyItem     )(Unit*, uint32, uint32, Item* );
+    bool   (*pGossipHello         )(Player* pPlayer, Creature* pCreature);
+    bool   (*pQuestAccept         )(Player* pPlayer, Creature* pCreature, Quest const* pQuest);
+    bool   (*pGossipSelect        )(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction);
+    bool   (*pGossipSelectWithCode)(Player* pPlayer, Creature* pCreature, uint32 uiSender, uint32 uiAction, const char* sCode);
+    bool   (*pQuestSelect         )(Player* pPlayer, Creature* pCreature, Quest const* pQuest);
+    bool   (*pQuestComplete       )(Player* pPlayer, Creature* pCreature, Quest const* pQuest);
+    uint32 (*pNPCDialogStatus     )(Player* pPlayer, Creature* pCreature);
+    uint32 (*pGODialogStatus      )(Player* pPlayer, GameObject* pGO);
+    bool   (*pChooseReward        )(Player* pPlayer, Creature* pCreature, Quest const* pQuest, uint32 opt);
+    bool   (*pItemHello           )(Player* pPlayer, Item* pItem, Quest const* pQuest);
+    bool   (*pGOHello             )(Player* pPlayer, GameObject* pGO);
+    bool   (*pAreaTrigger         )(Player* pPlayer, AreaTriggerEntry* pAt);
+    bool   (*pItemQuestAccept     )(Player* pPlayer, Item* pItem, Quest const*pQuest);
+    bool   (*pGOQuestAccept       )(Player* pPlayer, GameObject *pGO, Quest const*pQuest);
+    bool   (*pGOChooseReward      )(Player* pPlayer, GameObject *pGO, Quest const*pQuest, uint32 uiOpt);
+    bool   (*pItemUse             )(Player* pPlayer, Item* pItem, SpellCastTargets const& spcTargets);
+    bool   (*pEffectDummyGameObj  )(Unit* pCaster, uint32 uiSpellId, uint32 uiEffIndex, GameObject* pGOTarget);
+    bool   (*pEffectDummyCreature )(Unit* pCaster, uint32 uiSpellId, uint32 uiEffIndex, Creature* pCreatureTarget);
+    bool   (*pEffectDummyItem     )(Unit* pCaster, uint32 uiSpellId, uint32 uiEffIndex, Item* pItemTarget);
 
-    CreatureAI* (*GetAI)(Creature* pCreature);
-    InstanceData* (*GetInstanceData)(Map*);
+    CreatureAI*   (*GetAI          )(Creature* pCreature);
+    InstanceData* (*GetInstanceData)(Map* pMap);
     // -----------------------------------------
 
     void registerSelf();

@@ -18,77 +18,77 @@
 
 #include "sc_defines.h"
 
-bool GossipHello_default(Player* /*player*/, Creature* /*_Creature*/)
+bool GossipHello_default(Player* /*pPlayer*/, Creature* /*pCreature*/)
 {
     return false;
 }
 
-bool GossipSelect_default(Player* /*player*/, Creature* /*_Creature*/, uint32 /*sender*/, uint32 /*action*/ )
+bool GossipSelect_default(Player* /*pPlayer*/, Creature* /*pCreature*/, uint32 /*uiSender*/, uint32 /*action*/ )
 {
     return false;
 }
 
-bool GossipSelectWithCode_default( Player* /*player*/, Creature* /*_Creature*/, uint32 /*sender*/, uint32 /*action*/, const char* /*sCode*/ )
+bool GossipSelectWithCode_default( Player* /*pPlayer*/, Creature* /*pCreature*/, uint32 /*uiSender*/, uint32 /*uiAction*/, const char* /*sCode*/ )
 {
     return false;
 }
 
-bool QuestAccept_default(Player* /*player*/, Creature* /*_Creature*/, Quest const* /*_Quest*/ )
+bool QuestAccept_default(Player* /*pPlayer*/, Creature* /*pCreature*/, Quest const* /*pQuest*/ )
 {
     return false;
 }
 
-bool QuestSelect_default(Player* /*player*/, Creature* /*_Creature*/, Quest const* /*_Quest*/ )
+bool QuestSelect_default(Player* /*pPlayer*/, Creature* /*pCreature*/, Quest const* /*pQuest*/ )
 {
     return false;
 }
 
-bool QuestComplete_default(Player* /*player*/, Creature* /*_Creature*/, Quest const* /*_Quest*/ )
+bool QuestComplete_default(Player* /*pPlayer*/, Creature* /*pCreature*/, Quest const* /*pQuest*/ )
 {
     return false;
 }
 
-bool ChooseReward_default(Player* /*player*/, Creature* /*_Creature*/, Quest const* /*_Quest*/, uint32 /*opt*/ )
+bool ChooseReward_default(Player* /*pPlayer*/, Creature* /*pCreature*/, Quest const* /*pQuest*/, uint32 /*uiOpt*/ )
 {
     return false;
 }
 
-uint32 NPCDialogStatus_default(Player* /*player*/, Creature* /*_Creature*/ )
+uint32 NPCDialogStatus_default(Player* /*pPlayer*/, Creature* /*pCreature*/ )
 {
     return 128;
 }
 
-uint32 GODialogStatus_default(Player* /*player*/, GameObject* /*_Creature*/ )
+uint32 GODialogStatus_default(Player* /*pPlayer*/, GameObject* /*pGO*/ )
 {
     return 128;
 }
 
-bool ItemHello_default(Player* /*player*/, Item* /*_Item*/, Quest const* /*_Quest*/ )
+bool ItemHello_default(Player* /*pPlayer*/, Item* /*pItem*/, Quest const* /*pQuest*/ )
 {
     return false;
 }
 
-bool ItemQuestAccept_default(Player* /*player*/, Item* /*_Item*/, Quest const* /*_Quest*/ )
+bool ItemQuestAccept_default(Player* /*pPlayer*/, Item* /*pItem*/, Quest const* /*pQuest*/ )
 {
     return false;
 }
 
-bool GOHello_default(Player* /*player*/, GameObject* /*_GO*/ )
+bool GOHello_default(Player* /*pPlayer*/, GameObject* /*pGO*/ )
 {
     return false;
 }
 
-bool GOQuestAccept_default(Player* /*player*/, GameObject* /*_GO*/, Quest const* /*_Quest*/ )
+bool GOQuestAccept_default(Player* /*pPlayer*/, GameObject* /*pGO*/, Quest const* /*pQuest*/ )
 {
     return false;
 }
 
-bool GOChooseReward_default(Player* /*player*/, GameObject* /*_GO*/, Quest const* /*_Quest*/, uint32 /*opt*/ )
+bool GOChooseReward_default(Player* /*pPlayer*/, GameObject* /*pGO*/, Quest const* /*pQuest*/, uint32 /*uiOpt*/ )
 {
     return false;
 }
 
-bool AreaTrigger_default(Player* /*player*/, AreaTriggerEntry* /*atEntry*/ )
+bool AreaTrigger_default(Player* /*pPlayer*/, AreaTriggerEntry* /*atEntry*/ )
 {
     return false;
 }
