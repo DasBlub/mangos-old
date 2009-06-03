@@ -32,9 +32,6 @@ class GameObject;
 class SpellCastTargets;
 class Map;
 
-#define MAX_SCRIPTS 1000
-#define MAX_INSTANCE_SCRIPTS 1000
-
 struct Script
 {
     Script() :
