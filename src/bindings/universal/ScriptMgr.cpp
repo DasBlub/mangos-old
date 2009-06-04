@@ -49,7 +49,12 @@ void ScriptsInit()
 
 inline Script* GetScript(uint32 uiScriptId)
 {
-    return m_mScripts.find(uiScriptId)->second;
+    std::map<uint32, Script*>::iterator it = m_mScripts.find(uiScriptId);
+
+    if(it != m_mScripts.end())
+        return it->second;
+
+    return NULL;
 }
 
 MANGOS_DLL_EXPORT
