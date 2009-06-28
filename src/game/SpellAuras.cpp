@@ -427,7 +427,7 @@ Unit *caster, Item* castItem) : Aura(spellproto, eff, currentBasePoints, target,
     {
         case SPELL_EFFECT_APPLY_AREA_AURA_PARTY:
             m_areaAuraType = AREA_AURA_PARTY;
-            if(target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->isTotem())
+            if (target->GetTypeId() == TYPEID_UNIT && ((Creature*)target)->isTotem())
                 m_modifier.m_auraname = SPELL_AURA_NONE;
             break;
         case SPELL_EFFECT_APPLY_AREA_AURA_FRIEND:
@@ -435,7 +435,7 @@ Unit *caster, Item* castItem) : Aura(spellproto, eff, currentBasePoints, target,
             break;
         case SPELL_EFFECT_APPLY_AREA_AURA_ENEMY:
             m_areaAuraType = AREA_AURA_ENEMY;
-            if(target == caster_ptr)
+            if (target == caster_ptr)
                 m_modifier.m_auraname = SPELL_AURA_NONE;    // Do not do any effect on self
             break;
         case SPELL_EFFECT_APPLY_AREA_AURA_PET:
@@ -443,7 +443,7 @@ Unit *caster, Item* castItem) : Aura(spellproto, eff, currentBasePoints, target,
             break;
         case SPELL_EFFECT_APPLY_AREA_AURA_OWNER:
             m_areaAuraType = AREA_AURA_OWNER;
-            if(target == caster_ptr)
+            if (target == caster_ptr)
                 m_modifier.m_auraname = SPELL_AURA_NONE;
             break;
         default:
@@ -1234,8 +1234,6 @@ void Aura::TriggerSpell()
     // generic casting code with custom spells and target/caster customs
     uint32 trigger_spell_id = GetSpellProto()->EffectTriggerSpell[m_effIndex];
 
-    uint64 originalCasterGUID = GetCasterGUID();
-
     SpellEntry const *triggeredSpellInfo = sSpellStore.LookupEntry(trigger_spell_id);
     SpellEntry const *auraSpellInfo = GetSpellProto();
     uint32 auraId = auraSpellInfo->Id;
@@ -1876,28 +1874,18 @@ void Aura::TriggerSpell()
                     return;
 
                 caster = target;
-                originalCasterGUID = 0;
                 break;
             }
             // Mana Tide
             case 16191:
             {
-                caster->CastCustomSpell(target, trigger_spell_id, &m_modifier.m_amount, NULL, NULL, true, NULL, this, originalCasterGUID);
+                caster->CastCustomSpell(target, trigger_spell_id, &m_modifier.m_amount, NULL, NULL, true, NULL, this);
                 return;
             }
         }
     }
     // All ok cast by default case
-    Spell *spell = new Spell(caster, triggeredSpellInfo, true, originalCasterGUID );
-
-    SpellCastTargets targets;
-    targets.setUnitTarget( target );
-
-    // if spell create dynamic object extract area from it
-    if(DynamicObject* dynObj = caster->GetDynObject(GetId()))
-        targets.setDestination(dynObj->GetPositionX(),dynObj->GetPositionY(),dynObj->GetPositionZ());
-
-    spell->prepare(&targets, this);
+    caster->CastSpell(target, triggeredSpellInfo, true, 0, this);
 }
 
 /*********************************************************/

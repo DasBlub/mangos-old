@@ -1311,6 +1311,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void InitTalentForLevel();
 
         void LearnTalent(uint32 talentId, uint32 talentRank);
+        uint32 CalculateTalentsPoints() const;
 
         uint32 GetFreePrimaryProfessionPoints() const { return GetUInt32Value(PLAYER_CHARACTER_POINTS2); }
         void SetFreePrimaryProfessions(uint16 profs) { SetUInt32Value(PLAYER_CHARACTER_POINTS2, profs); }
@@ -1326,6 +1327,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         template <class T> T ApplySpellMod(uint32 spellId, SpellModOp op, T &basevalue, Spell const* spell = NULL);
         void RemoveSpellMods(Spell const* spell);
 
+        static uint32 const infinityCooldownDelay = MONTH;  // used for set "infinity cooldowns" for spells and check
+        static uint32 const infinityCooldownDelayCheck = MONTH/2;
         bool HasSpellCooldown(uint32 spell_id) const
         {
             SpellCooldowns::const_iterator itr = m_spellCooldowns.find(spell_id);
