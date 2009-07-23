@@ -498,7 +498,7 @@ enum UnitFlags
     UNIT_FLAG_DISARMED         = 0x00200000,                // disable melee spells casting..., "Required melee weapon" added to melee spells tooltip.
     UNIT_FLAG_CONFUSED         = 0x00400000,
     UNIT_FLAG_FLEEING          = 0x00800000,
-    UNIT_FLAG_UNK_24           = 0x01000000,                // used in spell Eyes of the Beast for pet...
+    UNIT_FLAG_PLAYER_CONTROLLED= 0x01000000,                // used in spell Eyes of the Beast for pet... let attack by controlled creature
     UNIT_FLAG_NOT_SELECTABLE   = 0x02000000,
     UNIT_FLAG_SKINNABLE        = 0x04000000,
     UNIT_FLAG_MOUNT            = 0x08000000,
@@ -786,6 +786,7 @@ typedef std::set<uint64> GuardianPetList;
 
 // delay time next attack to prevent client attack animation problems
 #define ATTACK_DISPLAY_DELAY 200
+#define MAX_PLAYER_STEALTH_DETECT_RANGE 45.0f               // max distance for detection targets by player
 
 class MANGOS_DLL_SPEC Unit : public WorldObject
 {
@@ -1116,11 +1117,13 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         bool AddAura(Aura *aur);
 
+        void RemoveAura(Aura* aura);
         void RemoveAura(AuraMap::iterator &i, AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
         void RemoveAura(uint32 spellId, uint32 effindex, Aura* except = NULL);
         void RemoveSingleAuraFromStack(uint32 spellId, uint32 effindex);
         void RemoveAurasDueToSpell(uint32 spellId, Aura* except = NULL);
         void RemoveAurasDueToItemSpell(Item* castItem,uint32 spellId);
+        void RemoveAurasByCasterSpell(uint32 spellId, uint64 casterGUID);
         void RemoveAurasDueToSpellByDispel(uint32 spellId, uint64 casterGUID, Unit *dispeler);
         void RemoveAurasDueToSpellBySteal(uint32 spellId, uint64 casterGUID, Unit *stealer);
         void RemoveAurasDueToSpellByCancel(uint32 spellId);
@@ -1260,6 +1263,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         HostilRefManager& getHostilRefManager() { return m_HostilRefManager; }
 
         Aura* GetAura(uint32 spellId, uint32 effindex);
+        Aura* GetAura(AuraType type, uint32 family, uint64 familyFlag, uint64 casterGUID = 0);
+
         AuraMap      & GetAuras()       { return m_Auras; }
         AuraMap const& GetAuras() const { return m_Auras; }
         AuraList const& GetAurasByType(AuraType type) const { return m_modAuras[type]; }
@@ -1306,6 +1311,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         float GetAPMultiplier(WeaponAttackType attType, bool normalized);
         void ModifyAuraState(AuraState flag, bool apply);
         bool HasAuraState(AuraState flag) const { return HasFlag(UNIT_FIELD_AURASTATE, 1<<(flag-1)); }
+        bool HasAuraStateForCaster(AuraState flag, uint64 caster) const;
         void UnsummonAllTotems();
         int32 SpellBaseDamageBonus(SpellSchoolMask schoolMask);
         int32 SpellBaseHealingBonus(SpellSchoolMask schoolMask);

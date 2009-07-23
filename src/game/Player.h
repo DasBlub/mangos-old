@@ -117,11 +117,12 @@ enum ActionButtonUpdateState
 
 enum ActionButtonType
 {
-    ACTION_BUTTON_SPELL = 0,
-    ACTION_BUTTON_EQSET = 32,
-    ACTION_BUTTON_MACRO = 64,
-    ACTION_BUTTON_CMACRO= 65,
-    ACTION_BUTTON_ITEM  = 128
+    ACTION_BUTTON_SPELL     = 0x00,
+    ACTION_BUTTON_C         = 0x01,                         // click?
+    ACTION_BUTTON_EQSET     = 0x20,
+    ACTION_BUTTON_MACRO     = 0x40,
+    ACTION_BUTTON_CMACRO    = ACTION_BUTTON_C | ACTION_BUTTON_MACRO,
+    ACTION_BUTTON_ITEM      = 0x80
 };
 
 #define ACTION_BUTTON_ACTION(X) (uint32(X) & 0x00FFFFFF)
@@ -404,6 +405,8 @@ enum PlayerFlags
 #define PLAYER_TITLE_OF_THE_SHATTERED_SUN  UI64LIT(0x0000004000000000) // 38
 #define PLAYER_TITLE_HAND_OF_ADAL          UI64LIT(0x0000008000000000) // 39
 #define PLAYER_TITLE_VENGEFUL_GLADIATOR    UI64LIT(0x0000010000000000) // 40
+
+#define MAX_TITLE_INDEX     64
 
 // used in PLAYER_FIELD_BYTES values
 enum PlayerFieldByteFlags
@@ -716,6 +719,14 @@ enum EnviromentalDamage
     DAMAGE_FALL_TO_VOID = 6                                 // custom case for fall without durability loss
 };
 
+enum PlayedTimeIndex
+{
+    PLAYED_TIME_TOTAL = 0,
+    PLAYED_TIME_LEVEL = 1
+};
+
+#define MAX_PLAYED_TIME_INDEX 2
+
 // used at player loading query list preparing, and later result selection
 enum PlayerLoginQueryIndex
 {
@@ -847,7 +858,7 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         void Update( uint32 time );
 
-        void BuildEnumData( QueryResult * result,  WorldPacket * p_data );
+        static bool BuildEnumData( QueryResult * result,  WorldPacket * p_data );
 
         void SetInWater(bool apply);
 
@@ -900,9 +911,9 @@ class MANGOS_DLL_SPEC Player : public Unit
         // Played Time Stuff
         time_t m_logintime;
         time_t m_Last_tick;
-        uint32 m_Played_time[2];
-        uint32 GetTotalPlayedTime() { return m_Played_time[0]; };
-        uint32 GetLevelPlayedTime() { return m_Played_time[1]; };
+        uint32 m_Played_time[MAX_PLAYED_TIME_INDEX];
+        uint32 GetTotalPlayedTime() { return m_Played_time[PLAYED_TIME_TOTAL]; };
+        uint32 GetLevelPlayedTime() { return m_Played_time[PLAYED_TIME_LEVEL]; };
 
         void setDeathState(DeathState s);                   // overwrite Unit::setDeathState
 
@@ -1053,7 +1064,7 @@ class MANGOS_DLL_SPEC Player : public Unit
             return !IsInFeralForm() && (!mainhand || !HasFlag(UNIT_FIELD_FLAGS,UNIT_FLAG_DISARMED) );
         }
         void SendNewItem( Item *item, uint32 count, bool received, bool created, bool broadcast = false );
-        bool BuyItemFromVendor(uint64 vendorguid, uint32 item, uint8 count, uint64 bagguid, uint8 slot);
+        bool BuyItemFromVendor(uint64 vendorguid, uint32 item, uint8 count, uint8 bag, uint8 slot);
 
         float GetReputationPriceDiscount( Creature const* pCreature ) const;
         Player* GetTrader() const { return pTrader; }
@@ -1155,7 +1166,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         void GroupEventHappens( uint32 questId, WorldObject const* pEventObject );
         void ItemAddedQuestCheck( uint32 entry, uint32 count );
         void ItemRemovedQuestCheck( uint32 entry, uint32 count );
-        void KilledMonster( uint32 entry, uint64 guid );
+        void KilledMonster( CreatureInfo const* cInfo, uint64 guid );
+        void KilledMonsterCredit( uint32 entry, uint64 guid );
         void CastedCreatureOrGO( uint32 entry, uint64 guid, uint32 spell_id );
         void TalkedToCreature( uint32 entry, uint64 guid );
         void MoneyChanged( uint32 value );
@@ -1195,6 +1207,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         static uint32 GetUInt32ValueFromDB(uint16 index, uint64 guid);
         static float  GetFloatValueFromDB(uint16 index, uint64 guid);
         static uint32 GetZoneIdFromDB(uint64 guid);
+        static uint32 GetLevelFromDB(uint64 guid);
         static bool   LoadPositionFromDB(uint32& mapid, float& x,float& y,float& z,float& o, bool& in_flight, uint64 guid);
 
         /*********************************************************/
@@ -1203,6 +1216,7 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         void SaveToDB();
         void SaveInventoryAndGoldToDB();                    // fast save function for item/money cheating preventing
+        void SaveGoldToDB();
         void SaveDataFieldToDB();
         static bool SaveValuesArrayInDB(Tokens const& data,uint64 guid);
         static void SetUInt32ValueInArray(Tokens& data,uint16 index, uint32 value);
@@ -1319,6 +1333,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         void PetSpellInitialize();
         void CharmSpellInitialize();
         void PossessSpellInitialize();
+        void RemovePetActionBar();
+
         bool HasSpell(uint32 spell) const;
         TrainerSpellState GetTrainerSpellState(TrainerSpell const* trainer_spell) const;
         bool IsSpellFitByClassAndRace( uint32 spell_id ) const;
@@ -1349,6 +1365,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         PlayerSpellMap const& GetSpellMap() const { return m_spells; }
         PlayerSpellMap      & GetSpellMap()       { return m_spells; }
 
+        SpellCooldowns const& GetSpellCooldownMap() const { return m_spellCooldowns; }
+
         void AddSpellMod(SpellModifier* mod, bool apply);
         int32 GetTotalFlatMods(uint32 spellId, SpellModOp op);
         int32 GetTotalPctMods(uint32 spellId, SpellModOp op);
@@ -1374,6 +1392,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void SendCooldownEvent(SpellEntry const *spellInfo, uint32 itemId = 0, Spell* spell = NULL);
         void ProhibitSpellScholl(SpellSchoolMask idSchoolMask, uint32 unTimeMs );
         void RemoveSpellCooldown(uint32 spell_id, bool update = false);
+        void RemoveSpellCategoryCooldown(uint32 cat, bool update = false);
         void SendClearCooldown( uint32 spell_id, Unit* target );
 
         void RemoveArenaSpellCooldowns();
@@ -1907,7 +1926,6 @@ class MANGOS_DLL_SPEC Player : public Unit
             void UpdateVisibilityOf(T* target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
 
         // Stealth detection system
-        uint32 m_DetectInvTimer;
         void HandleStealthedUnitsDetection();
 
         uint8 m_forced_speed_changes[MAX_MOVE_TYPE];
@@ -1974,7 +1992,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         DeclinedName const* GetDeclinedNames() const { return m_declinedname; }
         bool HasTitle(uint32 bitIndex);
         bool HasTitle(CharTitlesEntry const* title) { return HasTitle(title->bit_index); }
-        void SetTitle(CharTitlesEntry const* title);
+        void SetTitle(CharTitlesEntry const* title, bool lost = false);
 
         bool isActiveObject() const { return true; }
     protected:
@@ -2067,8 +2085,6 @@ class MANGOS_DLL_SPEC Player : public Unit
         bool _removeSpell(uint16 spell_id);
         uint64 m_lootGuid;
 
-        uint32 m_race;
-        uint32 m_class;
         uint32 m_team;
         uint32 m_nextSave;
         time_t m_speakTime;
@@ -2213,6 +2229,8 @@ class MANGOS_DLL_SPEC Player : public Unit
         WorldLocation m_teleport_dest;
         bool mSemaphoreTeleport_Near;
         bool mSemaphoreTeleport_Far;
+
+        uint32 m_DetectInvTimer;
 
         // Temporary removed pet cache
         uint32 m_temporaryUnsummonedPetNumber;
