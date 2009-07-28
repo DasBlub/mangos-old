@@ -37,8 +37,6 @@ class Player;
 class Spell;
 struct SpellModifier;
 
-extern SQLStorage sSpellThreatStore;
-
 // only used in code
 enum SpellCategories
 {
@@ -252,6 +250,17 @@ inline uint32 GetSpellMechanicMask(SpellEntry const* spellInfo, int32 effect)
     return mask;
 }
 
+inline uint32 GetAllSpellMechanicMask(SpellEntry const* spellInfo)
+{
+    uint32 mask = 0;
+    if (spellInfo->Mechanic)
+        mask |= 1<<spellInfo->Mechanic;
+    for (int i=0; i< 3; ++i)
+        if (spellInfo->EffectMechanic[i])
+            mask |= 1<<spellInfo->EffectMechanic[i];
+    return mask;
+}
+
 inline Mechanics GetEffectMechanic(SpellEntry const* spellInfo, int32 effect)
 {
     if (spellInfo->EffectMechanic[effect])
@@ -337,6 +346,7 @@ typedef UNORDERED_MAP<uint32, SpellProcEventEntry> SpellProcEventMap;
 #define ELIXIR_SHATTRATH_MASK 0x8
 
 typedef std::map<uint32, uint8> SpellElixirMap;
+typedef std::map<uint32, uint16> SpellThreatMap;
 
 // Spell script target related declarations (accessed using SpellMgr functions)
 enum SpellTargetType
@@ -538,6 +548,15 @@ class SpellMgr
                 return SPELL_GUARDIAN_ELIXIR;
             else
                 return SPELL_NORMAL;
+        }
+
+        uint16 GetSpellThreat(uint32 spellid) const
+        {
+            SpellThreatMap::const_iterator itr = mSpellThreatMap.find(spellid);
+            if(itr==mSpellThreatMap.end())
+                return 0;
+
+            return itr->second;
         }
 
         // Spell proc events
@@ -753,6 +772,7 @@ class SpellMgr
         SpellTargetPositionMap mSpellTargetPositions;
         SpellAffectMap     mSpellAffectMap;
         SpellElixirMap     mSpellElixirs;
+        SpellThreatMap     mSpellThreatMap;
         SpellProcEventMap  mSpellProcEventMap;
         SkillLineAbilityMap mSkillLineAbilityMap;
         SpellPetAuraMap     mSpellPetAuraMap;
