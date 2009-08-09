@@ -334,6 +334,7 @@ Spell::Spell( Unit* Caster, SpellEntry const *info, bool triggered, uint64 origi
 
     m_castPositionX = m_castPositionY = m_castPositionZ = 0;
     m_TriggerSpells.clear();
+    m_preCastSpells.clear();
     m_IsTriggeredSpell = triggered;
     //m_AreaAura = false;
     m_CastItem = NULL;
@@ -1037,31 +1038,33 @@ void Spell::DoSpellHitOnUnit(Unit *unit, const uint32 effectMask)
                 return;
             }
 
-            // exclude Arcane Missiles Dummy Aura aura for now (attack on hit)
-            // TODO: find way to not need this?
-            if(!(m_spellInfo->SpellFamilyName == SPELLFAMILY_MAGE &&
-                m_spellInfo->SpellFamilyFlags & UI64LIT(0x800)))
-            {
+            // not break stealth by cast targeting
+            if (!(m_spellInfo->AttributesEx & SPELL_ATTR_EX_NOT_BREAK_STEALTH))
                 unit->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
 
-                if( !(m_spellInfo->AttributesEx3 & SPELL_ATTR_EX3_NO_INITIAL_AGGRO) )
-                {
-                    if(!unit->IsStandState() && !unit->hasUnitState(UNIT_STAT_STUNNED))
-                        unit->SetStandState(UNIT_STAND_STATE_STAND);
+            // can cause back attack (if detected)
+            if (!(m_spellInfo->AttributesEx & SPELL_ATTR_EX_NO_INITIAL_AGGRO) &&
+                m_caster->isVisibleForOrDetect(unit,false)) // stealth removed at Spell::cast if spell break it
+            {
+                // use speedup check to avoid re-remove after above lines
+                if (m_spellInfo->AttributesEx & SPELL_ATTR_EX_NOT_BREAK_STEALTH)
+                    unit->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
 
-                    if(!unit->isInCombat() && unit->GetTypeId() != TYPEID_PLAYER && ((Creature*)unit)->AI())
-                        ((Creature*)unit)->AI()->AttackedBy(m_caster);
+                // caster can be detected but have stealth aura
+                m_caster->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
 
-                    unit->AddThreat(m_caster, 0.0f);
-                    unit->SetInCombatWith(m_caster);
-                    m_caster->SetInCombatWith(unit);
+                if (!unit->IsStandState() && !unit->hasUnitState(UNIT_STAT_STUNNED))
+                    unit->SetStandState(UNIT_STAND_STATE_STAND);
 
-                    if(Player *attackedPlayer = unit->GetCharmerOrOwnerPlayerOrPlayerItself())
-                    {
-                        m_caster->SetContestedPvP(attackedPlayer);
-                    }
-                    unit->AddThreat(m_caster, 0.0f);
-                }
+                if (!unit->isInCombat() && unit->GetTypeId() != TYPEID_PLAYER && ((Creature*)unit)->AI())
+                    ((Creature*)unit)->AI()->AttackedBy(m_caster);
+
+                unit->AddThreat(m_caster, 0.0f);
+                unit->SetInCombatWith(m_caster);
+                m_caster->SetInCombatWith(unit);
+
+                if(Player *attackedPlayer = unit->GetCharmerOrOwnerPlayerOrPlayerItself())
+                    m_caster->SetContestedPvP(attackedPlayer);
             }
         }
         else
@@ -1076,7 +1079,7 @@ void Spell::DoSpellHitOnUnit(Unit *unit, const uint32 effectMask)
             // assisting case, healing and resurrection
             if(unit->hasUnitState(UNIT_STAT_ATTACK_PLAYER))
                 m_caster->SetContestedPvP();
-            if( unit->isInCombat() && !(m_spellInfo->AttributesEx3 & SPELL_ATTR_EX3_NO_INITIAL_AGGRO) )
+            if( unit->isInCombat() && !(m_spellInfo->AttributesEx & SPELL_ATTR_EX_NO_INITIAL_AGGRO) )
             {
                 m_caster->SetInCombatState(unit->GetCombatTimer() > 0);
                 unit->getHostilRefManager().threatAssist(m_caster, 0.0f);
@@ -1090,6 +1093,9 @@ void Spell::DoSpellHitOnUnit(Unit *unit, const uint32 effectMask)
     // Increase Diminishing on unit, current informations for actually casts will use values above
     if((GetDiminishingReturnsGroupType(m_diminishGroup) == DRTYPE_PLAYER && unit->GetTypeId() == TYPEID_PLAYER) || GetDiminishingReturnsGroupType(m_diminishGroup) == DRTYPE_ALL)
         unit->IncrDiminishing(m_diminishGroup);
+
+    // Apply additional spell effects to target
+    CastPreCastSpells(unit);
 
     for(uint32 effectNumber = 0; effectNumber < 3; ++effectNumber)
     {
@@ -2012,11 +2018,31 @@ void Spell::cast(bool skipCheck)
         }
     }
 
-    // different triggred (for caster) cases
+    // different triggred (for caster) and precast (casted before apply effect to target) cases
     switch(m_spellInfo->SpellFamilyName)
     {
+        case SPELLFAMILY_GENERIC:
+        {
+            if (m_spellInfo->Mechanic == MECHANIC_BANDAGE)  // Bandages
+                AddPrecastSpell(11196);                     // Recently Bandaged
+            else if(m_spellInfo->SpellIconID == 1662 && m_spellInfo->AttributesEx & 0x20)
+                                                            // Blood Fury (Racial)
+                AddPrecastSpell(23230);                     // Blood Fury - Healing Reduction
+            break;
+        }
+        case SPELLFAMILY_MAGE:
+        {
+            // Ice Block
+            if(m_spellInfo->CasterAuraStateNot==AURA_STATE_HYPOTHERMIA)
+                AddPrecastSpell(41425);                     // Hypothermia
+            break;
+        }
         case SPELLFAMILY_PRIEST:
         {
+            // Power Word: Shield
+            if(m_spellInfo->CasterAuraStateNot==AURA_STATE_WEAKENED_SOUL || m_spellInfo->TargetAuraStateNot==AURA_STATE_WEAKENED_SOUL)
+                AddPrecastSpell(6788);                      // Weakened Soul
+
             switch(m_spellInfo->Id)
             {
                 case 15237: AddTriggeredSpell(23455); break;// Holy Nova, rank 1
@@ -2028,7 +2054,14 @@ void Spell::cast(bool skipCheck)
                 case 25331: AddTriggeredSpell(25329); break;// Holy Nova, rank 7
                 default:break;
             }
-            break;
+            break;      
+        }
+        case SPELLFAMILY_PALADIN:
+        {
+            // Divine Shield, Divine Protection, Blessing of Protection or Avenging Wrath
+            if(m_spellInfo->CasterAuraStateNot==AURA_STATE_FORBEARANCE || m_spellInfo->TargetAuraStateNot==AURA_STATE_FORBEARANCE)
+                AddPrecastSpell(25771);                     // Forbearance         
+          break;
         }
         default:
             break;
@@ -3059,6 +3092,19 @@ void Spell::AddTriggeredSpell( uint32 spellId )
     m_TriggerSpells.push_back(spellInfo);
 }
 
+void Spell::AddPrecastSpell( uint32 spellId )
+{
+    SpellEntry const *spellInfo = sSpellStore.LookupEntry(spellId );
+
+    if(!spellInfo)
+    {
+        sLog.outError("Spell::AddPrecastSpell: unknown spell id %u used as pre-cast spell for spell %u)", spellId, m_spellInfo->Id);
+        return;
+    }
+
+    m_preCastSpells.push_back(spellInfo);
+}
+
 void Spell::CastTriggerSpells()
 {
     for(SpellInfoList::const_iterator si=m_TriggerSpells.begin(); si!=m_TriggerSpells.end(); ++si)
@@ -3066,6 +3112,12 @@ void Spell::CastTriggerSpells()
         Spell* spell = new Spell(m_caster, (*si), true, m_originalCasterGUID, m_selfContainer);
         spell->prepare(&m_targets);                         // use original spell original targets
     }
+}
+
+void Spell::CastPreCastSpells(Unit* target)
+{
+    for(SpellInfoList::const_iterator si=m_preCastSpells.begin(); si!=m_preCastSpells.end(); ++si)
+        m_caster->CastSpell(target, (*si), true, m_CastItem);
 }
 
 SpellCastResult Spell::CheckCast(bool strict)
