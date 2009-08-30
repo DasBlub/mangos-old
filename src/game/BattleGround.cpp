@@ -86,6 +86,9 @@ BattleGround::BattleGround()
     m_PlayersCount[BG_TEAM_ALLIANCE]    = 0;
     m_PlayersCount[BG_TEAM_HORDE]       = 0;
 
+    m_TeamScores[BG_TEAM_ALLIANCE]      = 0;
+    m_TeamScores[BG_TEAM_HORDE]         = 0;
+
     m_PrematureCountDown = false;
     m_PrematureCountDown = 0;
 }
@@ -928,6 +931,10 @@ void BattleGround::StartBattleGround()
 
 void BattleGround::AddPlayer(Player *plr)
 {
+    // remove afk from player
+    if (plr->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_AFK))
+        plr->ToggleAFK();
+
     // score struct must be created in inherited class
 
     uint64 guid = plr->GetGUID();

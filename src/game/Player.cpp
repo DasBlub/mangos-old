@@ -2767,7 +2767,7 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool loading,
 
     // cast talents with SPELL_EFFECT_LEARN_SPELL (other dependent spells will learned later as not auto-learned)
     // note: all spells with SPELL_EFFECT_LEARN_SPELL isn't passive
-    if( talentCost > 0 && IsSpellHaveEffect(spellInfo,SPELL_EFFECT_LEARN_SPELL) )
+    if (talentCost > 0 && IsSpellHaveEffect(spellInfo,SPELL_EFFECT_LEARN_SPELL))
     {
         // ignore stance requirement for talent learn spell (stance set for spell only for client spell description show)
         CastSpell(this, spell_id, true);
@@ -2793,7 +2793,7 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool loading,
             if (!spellInfo->CasterAuraState || HasAuraState(AuraState(spellInfo->CasterAuraState)))
                 CastSpell(this, spell_id, true);
     }
-    else if( IsSpellHaveEffect(spellInfo,SPELL_EFFECT_SKILL_STEP) )
+    else if (IsSpellHaveEffect(spellInfo,SPELL_EFFECT_SKILL_STEP))
     {
         CastSpell(this, spell_id, true);
         return false;
@@ -2803,7 +2803,7 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool loading,
     m_usedTalentCount += talentCost;
 
     // update free primary prof.points (if any, can be none in case GM .learn prof. learning)
-    if(uint32 freeProfs = GetFreePrimaryProfessionPoints())
+    if (uint32 freeProfs = GetFreePrimaryProfessionPoints())
     {
         if(spellmgr.IsPrimaryProfessionFirstRankSpell(spell_id))
             SetFreePrimaryProfessions(freeProfs-1);
@@ -2814,17 +2814,17 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool loading,
 
     SpellLearnSkillNode const* spellLearnSkill = spellmgr.GetSpellLearnSkill(spell_id);
 
-    if(spellLearnSkill)
+    if (spellLearnSkill)
     {
         uint32 skill_value = GetPureSkillValue(spellLearnSkill->skill);
         uint32 skill_max_value = GetPureMaxSkillValue(spellLearnSkill->skill);
 
-        if(skill_value < spellLearnSkill->value)
+        if (skill_value < spellLearnSkill->value)
             skill_value = spellLearnSkill->value;
 
         uint32 new_skill_max_value = spellLearnSkill->maxvalue == 0 ? maxskill : spellLearnSkill->maxvalue;
 
-        if(skill_max_value < new_skill_max_value)
+        if (skill_max_value < new_skill_max_value)
             skill_max_value =  new_skill_max_value;
 
         SetSkill(spellLearnSkill->skill,skill_value,skill_max_value);
@@ -2832,16 +2832,15 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool loading,
     else
     {
         // not ranked skills
-        SkillLineAbilityMap::const_iterator lower = spellmgr.GetBeginSkillLineAbilityMap(spell_id);
-        SkillLineAbilityMap::const_iterator upper = spellmgr.GetEndSkillLineAbilityMap(spell_id);
+        SkillLineAbilityMapBounds skill_bounds = spellmgr.GetSkillLineAbilityMapBounds(spell_id);
 
-        for(SkillLineAbilityMap::const_iterator _spell_idx = lower; _spell_idx != upper; ++_spell_idx)
+        for(SkillLineAbilityMap::const_iterator _spell_idx = skill_bounds.first; _spell_idx != skill_bounds.second; ++_spell_idx)
         {
             SkillLineEntry const *pSkill = sSkillLineStore.LookupEntry(_spell_idx->second->skillId);
-            if(!pSkill)
+            if (!pSkill)
                 continue;
 
-            if(HasSkill(pSkill->id))
+            if (HasSkill(pSkill->id))
                 continue;
 
             if(_spell_idx->second->learnOnGetSkill == ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL ||
@@ -2869,15 +2868,14 @@ bool Player::addSpell(uint32 spell_id, bool active, bool learning, bool loading,
     }
 
     // learn dependent spells
-    SpellLearnSpellMap::const_iterator spell_begin = spellmgr.GetBeginSpellLearnSpell(spell_id);
-    SpellLearnSpellMap::const_iterator spell_end   = spellmgr.GetEndSpellLearnSpell(spell_id);
+    SpellLearnSpellMapBounds spell_bounds = spellmgr.GetSpellLearnSpellMapBounds(spell_id);
 
-    for(SpellLearnSpellMap::const_iterator itr2 = spell_begin; itr2 != spell_end; ++itr2)
+    for(SpellLearnSpellMap::const_iterator itr2 = spell_bounds.first; itr2 != spell_bounds.second; ++itr2)
     {
-        if(!itr2->second.autoLearned)
+        if (!itr2->second.autoLearned)
         {
-            if(loading)                                     // at spells loading, no output, but allow save
-                addSpell(itr2->second.spell,true,true,loading);
+            if (loading || !itr2->second.active)            // at spells loading, no output, but allow save
+                addSpell(itr2->second.spell,itr2->second.active,true,loading);
             else                                            // at normal learning
                 learnSpell(itr2->second.spell);
         }
@@ -2997,19 +2995,19 @@ void Player::removeSpell(uint32 spell_id, bool disabled)
                 prevSkill = spellmgr.GetSpellLearnSkill(spellmgr.GetFirstSpellInChain(prev_spell));
             }
 
-            if(!prevSkill)                                  // not found prev skill setting, remove skill
+            if (!prevSkill)                                 // not found prev skill setting, remove skill
                 SetSkill(spellLearnSkill->skill,0,0);
             else                                            // set to prev. skill setting values
             {
                 uint32 skill_value = GetPureSkillValue(prevSkill->skill);
                 uint32 skill_max_value = GetPureMaxSkillValue(prevSkill->skill);
 
-                if(skill_value >  prevSkill->value)
+                if (skill_value >  prevSkill->value)
                     skill_value = prevSkill->value;
 
                 uint32 new_skill_max_value = prevSkill->maxvalue == 0 ? GetMaxSkillValueForLevel() : prevSkill->maxvalue;
 
-                if(skill_max_value > new_skill_max_value)
+                if (skill_max_value > new_skill_max_value)
                     skill_max_value =  new_skill_max_value;
 
                 SetSkill(prevSkill->skill,skill_value,skill_max_value);
@@ -3020,24 +3018,22 @@ void Player::removeSpell(uint32 spell_id, bool disabled)
     else
     {
         // not ranked skills
-        SkillLineAbilityMap::const_iterator lower = spellmgr.GetBeginSkillLineAbilityMap(spell_id);
-        SkillLineAbilityMap::const_iterator upper = spellmgr.GetEndSkillLineAbilityMap(spell_id);
+        SkillLineAbilityMapBounds bounds = spellmgr.GetSkillLineAbilityMapBounds(spell_id);
 
-        for(SkillLineAbilityMap::const_iterator _spell_idx = lower; _spell_idx != upper; ++_spell_idx)
+        for(SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
         {
             SkillLineEntry const *pSkill = sSkillLineStore.LookupEntry(_spell_idx->second->skillId);
-            if(!pSkill)
+            if (!pSkill)
                 continue;
 
-            if(_spell_idx->second->learnOnGetSkill == ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL ||
-                // poison special case, not have ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL
-                pSkill->id==SKILL_POISONS && _spell_idx->second->max_value==0 ||
-                // lockpicking special case, not have ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL
-                pSkill->id==SKILL_LOCKPICKING && _spell_idx->second->max_value==0 )
+            if(_spell_idx->second->learnOnGetSkill == ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL &&
+                pSkill->categoryId != SKILL_CATEGORY_CLASS ||// not unlearn class skills (spellbook/talent pages)
+                // poisons/lockpicking special case, not have ABILITY_LEARNED_ON_GET_RACE_OR_CLASS_SKILL
+                (pSkill->id==SKILL_POISONS || pSkill->id==SKILL_LOCKPICKING) && _spell_idx->second->max_value==0 )
             {
                 // not reset skills for professions and racial abilities
-                if( (pSkill->categoryId==SKILL_CATEGORY_SECONDARY || pSkill->categoryId==SKILL_CATEGORY_PROFESSION) &&
-                    (IsProfessionSkill(pSkill->id) || _spell_idx->second->racemask!=0) )
+                if ((pSkill->categoryId==SKILL_CATEGORY_SECONDARY || pSkill->categoryId==SKILL_CATEGORY_PROFESSION) &&
+                    (IsProfessionSkill(pSkill->id) || _spell_idx->second->racemask!=0))
                     continue;
 
                 SetSkill(pSkill->id, 0, 0 );
@@ -3046,10 +3042,9 @@ void Player::removeSpell(uint32 spell_id, bool disabled)
     }
 
     // remove dependent spells
-    SpellLearnSpellMap::const_iterator spell_begin = spellmgr.GetBeginSpellLearnSpell(spell_id);
-    SpellLearnSpellMap::const_iterator spell_end   = spellmgr.GetEndSpellLearnSpell(spell_id);
+    SpellLearnSpellMapBounds spell_bounds = spellmgr.GetSpellLearnSpellMapBounds(spell_id);
 
-    for(SpellLearnSpellMap::const_iterator itr2 = spell_begin; itr2 != spell_end; ++itr2)
+    for(SpellLearnSpellMap::const_iterator itr2 = spell_bounds.first; itr2 != spell_bounds.second; ++itr2)
         removeSpell(itr2->second.spell, disabled);
 }
 
@@ -4731,20 +4726,19 @@ bool Player::UpdateCraftSkill(uint32 spellid)
 {
     sLog.outDebug("UpdateCraftSkill spellid %d", spellid);
 
-    SkillLineAbilityMap::const_iterator lower = spellmgr.GetBeginSkillLineAbilityMap(spellid);
-    SkillLineAbilityMap::const_iterator upper = spellmgr.GetEndSkillLineAbilityMap(spellid);
+    SkillLineAbilityMapBounds bounds = spellmgr.GetSkillLineAbilityMapBounds(spellid);
 
-    for(SkillLineAbilityMap::const_iterator _spell_idx = lower; _spell_idx != upper; ++_spell_idx)
+    for(SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
     {
-        if(_spell_idx->second->skillId)
+        if (_spell_idx->second->skillId)
         {
             uint32 SkillValue = GetPureSkillValue(_spell_idx->second->skillId);
 
             // Alchemy Discoveries here
             SpellEntry const* spellEntry = sSpellStore.LookupEntry(spellid);
-            if(spellEntry && spellEntry->Mechanic==MECHANIC_DISCOVERY)
+            if (spellEntry && spellEntry->Mechanic==MECHANIC_DISCOVERY)
             {
-                if(uint32 discoveredSpell = GetSkillDiscoverySpell(_spell_idx->second->skillId, spellid, this))
+                if (uint32 discoveredSpell = GetSkillDiscoverySpell(_spell_idx->second->skillId, spellid, this))
                     learnSpell(discoveredSpell);
             }
 
@@ -5035,10 +5029,9 @@ void Player::SetSkill(uint32 id, uint16 currVal, uint16 maxVal)
                 if(itr->second->state == PLAYERSPELL_REMOVED)
                     continue;
 
-                SkillLineAbilityMap::const_iterator lower = spellmgr.GetBeginSkillLineAbilityMap(itr->first);
-                SkillLineAbilityMap::const_iterator upper = spellmgr.GetEndSkillLineAbilityMap(itr->first);
+                SkillLineAbilityMapBounds bounds = spellmgr.GetSkillLineAbilityMapBounds(itr->first);
 
-                for(SkillLineAbilityMap::const_iterator _spell_idx = lower; _spell_idx != upper; ++_spell_idx)
+                for(SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
                 {
                     if (_spell_idx->second->skillId == id)
                     {
@@ -16019,13 +16012,15 @@ void Player::HandleStealthedUnitsDetection()
     cell_lock->Visit(cell_lock, world_unit_searcher, *GetMap());
     cell_lock->Visit(cell_lock, grid_unit_searcher, *GetMap());
 
+    WorldObject const* viewPoint = GetViewPoint();
+
     for (std::list<Unit*>::const_iterator i = stealthedUnits.begin(); i != stealthedUnits.end(); ++i)
     {
         if((*i)==this)
             continue;
 
         bool hasAtClient = HaveAtClient((*i));
-        bool hasDetected = (*i)->isVisibleForOrDetect(this, true);
+        bool hasDetected = (*i)->isVisibleForOrDetect(this, viewPoint, true);
 
         if (hasDetected)
         {
@@ -16945,6 +16940,17 @@ void Player::ReportedAfkBy(Player* reporter)
     }
 }
 
+WorldObject const* Player::GetViewPoint() const
+{
+    if(uint64 far_sight = GetFarSight())
+    {
+        WorldObject const* viewPoint = ObjectAccessor::GetWorldObject(*this,far_sight);
+        return viewPoint ? viewPoint : this;                // always expected not NULL
+    }
+    else
+        return this;
+}
+
 bool Player::IsVisibleInGridForPlayer( Player* pl ) const
 {
     // gamemaster in GM mode see all, including ghosts
@@ -17010,11 +17016,11 @@ bool Player::IsVisibleGloballyFor( Player* u ) const
     return true;
 }
 
-void Player::UpdateVisibilityOf(WorldObject* target)
+void Player::UpdateVisibilityOf(WorldObject const* viewPoint, WorldObject* target)
 {
     if(HaveAtClient(target))
     {
-        if(!target->isVisibleForInState(this, true))
+        if(!target->isVisibleForInState(this, viewPoint, true))
         {
             target->DestroyForPlayer(this);
             m_clientGUIDs.erase(target->GetGUID());
@@ -17027,7 +17033,7 @@ void Player::UpdateVisibilityOf(WorldObject* target)
     }
     else
     {
-        if(target->isVisibleForInState(this,false))
+        if(target->isVisibleForInState(this, viewPoint, false))
         {
             target->SendUpdateToPlayer(this);
             if(target->GetTypeId()!=TYPEID_GAMEOBJECT||!((GameObject*)target)->IsTransport())
@@ -17063,11 +17069,11 @@ inline void UpdateVisibilityOf_helper(std::set<uint64>& s64, GameObject* target)
 }
 
 template<class T>
-void Player::UpdateVisibilityOf(T* target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow)
+void Player::UpdateVisibilityOf(WorldObject const* viewPoint, T* target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow)
 {
     if(HaveAtClient(target))
     {
-        if(!target->isVisibleForInState(this,true))
+        if(!target->isVisibleForInState(this,viewPoint,true))
         {
             target->BuildOutOfRangeUpdateBlock(&data);
             m_clientGUIDs.erase(target->GetGUID());
@@ -17080,7 +17086,7 @@ void Player::UpdateVisibilityOf(T* target, UpdateData& data, UpdateDataMapType& 
     }
     else
     {
-        if(target->isVisibleForInState(this,false))
+        if(target->isVisibleForInState(this,viewPoint,false))
         {
             visibleNow.insert(target);
             target->BuildUpdate(data_updates);
@@ -17095,11 +17101,11 @@ void Player::UpdateVisibilityOf(T* target, UpdateData& data, UpdateDataMapType& 
     }
 }
 
-template void Player::UpdateVisibilityOf(Player*        target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
-template void Player::UpdateVisibilityOf(Creature*      target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
-template void Player::UpdateVisibilityOf(Corpse*        target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
-template void Player::UpdateVisibilityOf(GameObject*    target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
-template void Player::UpdateVisibilityOf(DynamicObject* target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
+template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, Player*        target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
+template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, Creature*      target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
+template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, Corpse*        target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
+template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, GameObject*    target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
+template void Player::UpdateVisibilityOf(WorldObject const* viewPoint, DynamicObject* target, UpdateData& data, UpdateDataMapType& data_updates, std::set<WorldObject*>& visibleNow);
 
 void Player::InitPrimaryProfessions()
 {
@@ -17356,18 +17362,14 @@ void Player::learnDefaultSpells(bool loading)
 {
     // learn default race/class spells
     PlayerInfo const *info = objmgr.GetPlayerInfo(getRace(),getClass());
-    PlayerCreateInfoSpells::const_iterator spell_itr;
-    for (spell_itr = info->spell.begin(); spell_itr!=info->spell.end(); ++spell_itr)
+    for (PlayerCreateInfoSpells::const_iterator itr = info->spell.begin(); itr!=info->spell.end(); ++itr)
     {
-        uint32 tspell = spell_itr->first;
-        if (tspell)
-        {
-            sLog.outDebug("PLAYER: Adding initial spell, id = %u",tspell);
-            if(loading || !spell_itr->second)               // not care about passive spells or loading case
-                addSpell(tspell,spell_itr->second);
-            else                                            // but send in normal spell in game learn case
-                learnSpell(tspell);
-        }
+        uint32 tspell = *itr;
+        sLog.outDebug("PLAYER (Class: %u Race: %u): Adding initial spell, id = %u",uint32(getClass()),uint32(getRace()), tspell);
+        if(loading)                                         // will send in INITIAL_SPELLS in list anyway
+            addSpell(tspell,true);
+        else                                                // but send in normal spell in game learn case
+            learnSpell(tspell);
     }
 }
 
@@ -17615,18 +17617,21 @@ bool Player::IsSpellFitByClassAndRace( uint32 spell_id ) const
     uint32 racemask  = getRaceMask();
     uint32 classmask = getClassMask();
 
-    SkillLineAbilityMap::const_iterator lower = spellmgr.GetBeginSkillLineAbilityMap(spell_id);
-    SkillLineAbilityMap::const_iterator upper = spellmgr.GetEndSkillLineAbilityMap(spell_id);
+    SkillLineAbilityMapBounds bounds = spellmgr.GetSkillLineAbilityMapBounds(spell_id);
+    if (bounds.first==bounds.second)
+        return true;
 
-    for(SkillLineAbilityMap::const_iterator _spell_idx = lower; _spell_idx != upper; ++_spell_idx)
+    for(SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
     {
         // skip wrong race skills
-        if( _spell_idx->second->racemask && (_spell_idx->second->racemask & racemask) == 0)
-            return false;
+        if (_spell_idx->second->racemask && (_spell_idx->second->racemask & racemask) == 0)
+            continue;
 
         // skip wrong class skills
-        if( _spell_idx->second->classmask && (_spell_idx->second->classmask & classmask) == 0)
-            return false;
+        if (_spell_idx->second->classmask && (_spell_idx->second->classmask & classmask) == 0)
+            continue;
+
+        return true;
     }
     return true;
 }
@@ -18670,3 +18675,13 @@ void Player::learnSpellHighRank(uint32 spellid)
         learnSpellHighRank(itr->second);
 }
 
+void Player::SetFarSightGUID( uint64 guid )
+{
+    if(GetFarSight()==guid)
+        return;
+
+    SetUInt64Value(PLAYER_FARSIGHT, guid);
+
+    // need triggering load grids around new view point
+    ObjectAccessor::UpdateVisibilityForPlayer(this);
+}

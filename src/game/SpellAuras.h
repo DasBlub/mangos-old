@@ -305,7 +305,6 @@ class MANGOS_DLL_SPEC Aura
         DiminishingGroup getDiminishGroup() const { return m_AuraDRGroup; }
 
         void TriggerSpell();
-
     protected:
         Aura(SpellEntry const* spellproto, uint32 eff, int32 *currentBasePoints, Unit *target, Unit *caster = NULL, Item* castItem = NULL);
 
@@ -315,6 +314,8 @@ class MANGOS_DLL_SPEC Aura
         // must be called only from Aura*::Update
         void PeriodicTick();
         void PeriodicDummyTick();
+
+        void ReapplyAffectedPassiveAuras(Unit* target, SpellModifier const& spellmod);
 
         Modifier m_modifier;
         SpellModifier *m_spellmod;

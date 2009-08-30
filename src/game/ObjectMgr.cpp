@@ -1806,10 +1806,8 @@ void ObjectMgr::LoadItemRequiredTarget()
                 if (pItemProto->Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_USE ||
                     pItemProto->Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_ON_NO_DELAY_USE)
                 {
-                    SpellScriptTarget::const_iterator lower = spellmgr.GetBeginSpellScriptTarget(pSpellInfo->Id);
-                    SpellScriptTarget::const_iterator upper = spellmgr.GetEndSpellScriptTarget(pSpellInfo->Id);
-
-                    if (lower != upper)
+                    SpellScriptTargetBounds bounds = spellmgr.GetSpellScriptTargetBounds(pSpellInfo->Id);
+                    if (bounds.first != bounds.second)
                         break;
 
                     for (int j = 0; j < 3; ++j)
@@ -2143,8 +2141,8 @@ void ObjectMgr::LoadPlayerInfo()
 
     // Load playercreate spells
     {
-        //                                                0     1      2      3
-        QueryResult *result = WorldDatabase.Query("SELECT race, class, Spell, Active FROM playercreateinfo_spell");
+        //                                                0     1      2
+        QueryResult *result = WorldDatabase.Query("SELECT race, class, Spell FROM playercreateinfo_spell");
 
         uint32 count = 0;
 
@@ -2179,7 +2177,7 @@ void ObjectMgr::LoadPlayerInfo()
                 }
 
                 PlayerInfo* pInfo = &playerInfo[current_race][current_class];
-                pInfo->spell.push_back(CreateSpellPair(fields[2].GetUInt32(), fields[3].GetUInt8()));
+                pInfo->spell.push_back(fields[2].GetUInt32());
 
                 bar.step();
                 ++count;

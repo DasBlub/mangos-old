@@ -75,7 +75,7 @@ uint32 GetSpellCastTime(SpellEntry const* spellInfo, Spell const* spell)
         if(Player* modOwner = spell->GetCaster()->GetSpellModOwner())
             modOwner->ApplySpellMod(spellInfo->Id, SPELLMOD_CASTING_TIME, castTime, spell);
 
-        if( !(spellInfo->Attributes & (SPELL_ATTR_UNK4|SPELL_ATTR_UNK5)) )
+        if( !(spellInfo->Attributes & (SPELL_ATTR_UNK4|SPELL_ATTR_TRADESPELL)) )
             castTime = int32(castTime * spell->GetCaster()->GetFloatValue(UNIT_MOD_CAST_SPEED));
         else
         {
@@ -1010,11 +1010,10 @@ bool SpellMgr::IsSpellProcEventCanTriggeredBy( SpellProcEventEntry const * spell
         if (!procSpell)
             return false;
 
-        SkillLineAbilityMap::const_iterator lower = spellmgr.GetBeginSkillLineAbilityMap(procSpell->Id);
-        SkillLineAbilityMap::const_iterator upper = spellmgr.GetEndSkillLineAbilityMap(procSpell->Id);
+        SkillLineAbilityMapBounds bounds = spellmgr.GetSkillLineAbilityMapBounds(procSpell->Id);
 
         bool found = false;
-        for(SkillLineAbilityMap::const_iterator _spell_idx = lower; _spell_idx != upper; ++_spell_idx)
+        for(SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
         {
             if(_spell_idx->second->skillId == spellProcEvent->skillId)
             {
@@ -1820,8 +1819,9 @@ void SpellMgr::LoadSpellLearnSpells()
 {
     mSpellLearnSpells.clear();                              // need for reload case
 
-    QueryResult *result = WorldDatabase.Query("SELECT entry, SpellID FROM spell_learn_spell");
-    if(!result)
+    //                                                0      1        2
+    QueryResult *result = WorldDatabase.Query("SELECT entry, SpellID, Active FROM spell_learn_spell");
+    if (!result)
     {
         barGoLink bar( 1 );
         bar.step();
@@ -1844,21 +1844,22 @@ void SpellMgr::LoadSpellLearnSpells()
 
         SpellLearnSpellNode node;
         node.spell      = fields[1].GetUInt32();
+        node.active     = fields[2].GetBool();
         node.autoLearned= false;
 
-        if(!sSpellStore.LookupEntry(spell_id))
+        if (!sSpellStore.LookupEntry(spell_id))
         {
             sLog.outErrorDb("Spell %u listed in `spell_learn_spell` does not exist",spell_id);
             continue;
         }
 
-        if(!sSpellStore.LookupEntry(node.spell))
+        if (!sSpellStore.LookupEntry(node.spell))
         {
             sLog.outErrorDb("Spell %u listed in `spell_learn_spell` learning not existed spell %u",spell_id,node.spell);
             continue;
         }
 
-        if(GetTalentSpellCost(node.spell))
+        if (GetTalentSpellCost(node.spell))
         {
             sLog.outErrorDb("Spell %u listed in `spell_learn_spell` attempt learning talent spell %u, skipped",spell_id,node.spell);
             continue;
@@ -1877,7 +1878,7 @@ void SpellMgr::LoadSpellLearnSpells()
     {
         SpellEntry const* entry = sSpellStore.LookupEntry(spell);
 
-        if(!entry)
+        if (!entry)
             continue;
 
         for(int i = 0; i < 3; ++i)
@@ -1886,9 +1887,10 @@ void SpellMgr::LoadSpellLearnSpells()
             {
                 SpellLearnSpellNode dbc_node;
                 dbc_node.spell       = entry->EffectTriggerSpell[i];
+                dbc_node.active      = true;                // all dbc based learned spells is active (show in spell book or hide by client itself)
 
                 // ignore learning not existed spells (broken/outdated/or generic learnig spell 483
-                if(!sSpellStore.LookupEntry(dbc_node.spell))
+                if (!sSpellStore.LookupEntry(dbc_node.spell))
                     continue;
 
                 // talent or passive spells or skill-step spells auto-casted and not need dependent learning,
@@ -1896,13 +1898,12 @@ void SpellMgr::LoadSpellLearnSpells()
                 // other required explicit dependent learning
                 dbc_node.autoLearned = entry->EffectImplicitTargetA[i]==TARGET_PET || GetTalentSpellCost(spell) > 0 || IsPassiveSpell(spell) || IsSpellHaveEffect(entry,SPELL_EFFECT_SKILL_STEP);
 
-                SpellLearnSpellMap::const_iterator db_node_begin = GetBeginSpellLearnSpell(spell);
-                SpellLearnSpellMap::const_iterator db_node_end   = GetEndSpellLearnSpell(spell);
+                SpellLearnSpellMapBounds db_node_bounds = GetSpellLearnSpellMapBounds(spell);
 
                 bool found = false;
-                for(SpellLearnSpellMap::const_iterator itr = db_node_begin; itr != db_node_end; ++itr)
+                for(SpellLearnSpellMap::const_iterator itr = db_node_bounds.first; itr != db_node_bounds.second; ++itr)
                 {
-                    if(itr->second.spell == dbc_node.spell)
+                    if (itr->second.spell == dbc_node.spell)
                     {
                         sLog.outErrorDb("Spell %u auto-learn spell %u in spell.dbc then the record in `spell_learn_spell` is redundant, please fix DB.",
                             spell,dbc_node.spell);
@@ -1911,7 +1912,7 @@ void SpellMgr::LoadSpellLearnSpells()
                     }
                 }
 
-                if(!found)                                  // add new spell-spell pair if not found
+                if (!found)                                 // add new spell-spell pair if not found
                 {
                     mSpellLearnSpells.insert(SpellLearnSpellMap::value_type(spell,dbc_node));
                     ++dbc_count;
