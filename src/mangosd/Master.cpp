@@ -137,6 +137,7 @@ public:
             delete WorldDatabase.Query ("SELECT 1 FROM command LIMIT 1");
             delete loginDatabase.Query ("SELECT 1 FROM realmlist LIMIT 1");
             delete CharacterDatabase.Query ("SELECT 1 FROM bugreport LIMIT 1");
+            delete logDatabase.Query ("SELECT 1 FROM charlog LIMIT 1");
         }
     }
 
@@ -337,6 +338,7 @@ int Master::Run()
     CharacterDatabase.HaltDelayThread();
     WorldDatabase.HaltDelayThread();
     loginDatabase.HaltDelayThread();
+    logDatabase.HaltDelayThread();
 
     sLog.outString( "Halting process..." );
 
@@ -454,6 +456,24 @@ bool Master::_StartDB()
 
     if(!loginDatabase.CheckRequiredField("realmd_db_version",REVISION_DB_REALMD))
         return false;
+
+    ///- Get log database info from configuration file
+    if(!sConfig.GetString("LogDatabaseInfo", &dbstring))
+    {
+        sLog.outError("Log database not specified in configuration file");
+        return false;
+    }
+
+    ///- Initialise the log database
+    sLog.outString("Log Database: %s", dbstring.c_str() );
+    if(!logDatabase.Initialize(dbstring.c_str()))
+    {
+        sLog.outError("Cannot connect to log database %s",dbstring.c_str());
+        return false;
+    }
+
+    //if(!logDatabase.CheckRequiredField("log_db_version",REVISION_DB_REALMD))
+    //    return false;
 
     ///- Get the realm Id from the configuration file
     realmID = sConfig.GetIntDefault("RealmID", 0);

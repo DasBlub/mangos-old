@@ -289,6 +289,13 @@ void WorldSession::LogoutPlayer(bool Save)
 
     if (_player)
     {
+        sLog.outChar("Account: %d (IP: %s) Logout Character:[%s] (guid:%u)",
+            GetAccountId(), GetRemoteAddress().c_str(), _player->GetName() ,_player->GetGUIDLow());
+
+        std::stringstream tmp;
+        tmp << "INSERT INTO charlog (guid,charname,account,timestamp,ip,action) VALUES (" << _player->GetGUIDLow() << ",'" << _player->GetName() << "'," << GetAccountId() << ",NOW(),'" << GetRemoteAddress() << "',3)";
+        logDatabase.PExecute(tmp.str().c_str());
+
         if (uint64 lguid = GetPlayer()->GetLootGUID())
             DoLootRelease(lguid);
 
