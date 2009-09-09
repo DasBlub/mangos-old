@@ -450,6 +450,8 @@ void WorldSession::HandleCharCreateOpcode( WorldPacket & recv_data )
     pNewChar->SaveToDB();
     charcount+=1;
 
+    uint64 guid = pNewChar->GetGUIDLow();
+
     loginDatabase.PExecute("DELETE FROM realmcharacters WHERE acctid= '%d' AND realmid = '%d'", GetAccountId(), realmID);
     loginDatabase.PExecute("INSERT INTO realmcharacters (numchars, acctid, realmid) VALUES (%u, %u, %u)",  charcount, GetAccountId(), realmID);
 
@@ -459,8 +461,12 @@ void WorldSession::HandleCharCreateOpcode( WorldPacket & recv_data )
     SendPacket( &data );
 
     std::string IP_str = GetRemoteAddress();
-    sLog.outBasic("Account: %d (IP: %s) Create Character:[%s]",GetAccountId(),IP_str.c_str(),name.c_str());
-    sLog.outChar("Account: %d (IP: %s) Create Character:[%s]",GetAccountId(),IP_str.c_str(),name.c_str());
+    sLog.outBasic("Account: %d (IP: %s) Create Character:[%s] (guid: %u)",GetAccountId(),IP_str.c_str(),name.c_str(), guid);
+    sLog.outChar("Account: %d (IP: %s) Create Character:[%s] (guid: %u)",GetAccountId(),IP_str.c_str(),name.c_str(), guid);
+
+    std::stringstream tmp;
+    tmp << "INSERT INTO charlog (guid,charname,account,timestamp,ip,action) VALUES (" << guid << ",'" << name << "'," << GetAccountId() << ",NOW(),'" << IP_str << "',0)";
+    logDatabase.PExecute(tmp.str().c_str());
 }
 
 void WorldSession::HandleCharDeleteOpcode( WorldPacket & recv_data )
@@ -509,6 +515,11 @@ void WorldSession::HandleCharDeleteOpcode( WorldPacket & recv_data )
     std::string IP_str = GetRemoteAddress();
     sLog.outBasic("Account: %d (IP: %s) Delete Character:[%s] (guid: %u)",GetAccountId(),IP_str.c_str(),name.c_str(),GUID_LOPART(guid));
     sLog.outChar("Account: %d (IP: %s) Delete Character:[%s] (guid: %u)",GetAccountId(),IP_str.c_str(),name.c_str(),GUID_LOPART(guid));
+
+
+    std::stringstream tmp;
+    tmp << "INSERT INTO charlog (guid,charname,account,timestamp,ip,action) VALUES (" << GUID_LOPART(guid) << ",'" << name << "'," << GetAccountId() << ",NOW(),'" << IP_str << "',1)";
+    logDatabase.PExecute(tmp.str().c_str());
 
     if(sLog.IsOutCharDump())                                // optimize GetPlayerDump call
     {
@@ -774,7 +785,12 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder * holder)
 
     std::string IP_str = GetRemoteAddress();
     sLog.outChar("Account: %d (IP: %s) Login Character:[%s] (guid:%u)",
-        GetAccountId(),IP_str.c_str(),pCurrChar->GetName() ,pCurrChar->GetGUIDLow());
+        GetAccountId(),IP_str.c_str(), pCurrChar->GetName() ,pCurrChar->GetGUIDLow());
+
+
+    std::stringstream tmp;
+    tmp << "INSERT INTO charlog (guid,charname,account,timestamp,ip,action) VALUES (" << pCurrChar->GetGUIDLow() << ",'" << pCurrChar->GetName() << "'," << GetAccountId() << ",NOW(),'" << IP_str << "',2)";
+    logDatabase.PExecute(tmp.str().c_str());
 
     if(!pCurrChar->IsStandState() && !pCurrChar->hasUnitState(UNIT_STAT_STUNNED))
         pCurrChar->SetStandState(UNIT_STAND_STATE_STAND);
@@ -965,6 +981,10 @@ void WorldSession::HandleChangePlayerNameOpcodeCallBack(QueryResult *result, uin
     CharacterDatabase.PExecute("DELETE FROM character_declinedname WHERE guid ='%u'", guidLow);
 
     sLog.outChar("Account: %d (IP: %s) Character:[%s] (guid:%u) Changed name to: %s", session->GetAccountId(), session->GetRemoteAddress().c_str(), oldname.c_str(), guidLow, newname.c_str());
+
+    std::stringstream tmp;
+    tmp << "INSERT INTO charlog (guid,charname,account,timestamp,ip,action) VALUES (" << guidLow << ",'" << oldname << "'," << session->GetAccountId() << ",NOW(),'" << session->GetRemoteAddress() << "',4)";
+    logDatabase.PExecute(tmp.str().c_str());
 
     WorldPacket data(SMSG_CHAR_RENAME, 1+8+(newname.size()+1));
     data << uint8(RESPONSE_SUCCESS);
@@ -1208,6 +1228,10 @@ void WorldSession::HandleCharCustomize(WorldPacket& recv_data)
 
     std::string IP_str = GetRemoteAddress();
     sLog.outChar("Account: %d (IP: %s), Character guid: %u Customized to: %s", GetAccountId(), IP_str.c_str(), GUID_LOPART(guid), newname.c_str());
+
+    std::stringstream tmp;
+    tmp << "INSERT INTO charlog (guid,charname,account,timestamp,ip,action) VALUES (" << GUID_LOPART(guid) << ",'" << newname << "'," << GetAccountId() << ",NOW(),'" << IP_str << "',5)";
+    logDatabase.PExecute(tmp.str().c_str());
 
     WorldPacket data(SMSG_CHAR_CUSTOMIZE, 1+8+(newname.size()+1)+6);
     data << uint8(RESPONSE_SUCCESS);
