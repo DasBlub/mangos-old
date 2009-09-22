@@ -538,6 +538,18 @@ LogColors = ""
 #        Default: 7
 #                -1 (show all available quests marks)
 #
+#    Guild.EventLogRecordsCount
+#        Count of guild event log records stored in guild_eventlog table
+#        Increase to store more guild events in table, minimum is 100
+#        You can set it to very high value to prevent oldest guild events to be rewritten by latest guild events - but it can slow down performance
+#        Default: 100
+#
+#    Guild.BankEventLogRecordsCount
+#        Count of guild_bank event log records stored in guild_bank_eventlog table
+#        Increase to store more guild_bank events in table - minimum is 25 (GUILD_BANK_MAX_LOGS) for each guild_bank tab
+#        Useful when you don't want old log events to be overwritten by new, but increasing can slow down performance
+#        Default: 25
+#
 #    MaxPrimaryTradeSkill
 #        Max count that player can learn the primary trade skill.
 #        Default: 2
@@ -612,6 +624,8 @@ Instance.ResetTimeHour = 4
 Instance.UnloadDelay = 1800000
 Quests.LowLevelHideDiff = 4
 Quests.HighLevelHideDiff = 7
+Guild.EventLogRecordsCount = 100
+Guild.BankEventLogRecordsCount = 25
 MaxPrimaryTradeSkill = 2
 MinPetitionSigns = 9
 MaxGroupXPDistance = 74
@@ -927,12 +941,12 @@ GM.LowerSecurity         = 0
 #                 1 (raid members 100% auto detect invisible player from same raid)
 #                 2 (players from same team can 100% auto detect invisible player)
 #
-#    Visibility.Distance.Creature
-#    Visibility.Distance.Player
-#        Visibility distance for different in game object
-#        Max limited by active player zone: ~ 166
-#        Min limit dependent from objects
-#        Default: 66 (cell size)
+#    Visibility.Distance.Continents
+#    Visibility.Distance.Instances
+#    Visibility.Distance.BGArenas
+#        Visibility distance for different ingame object in different maps.
+#        Visibility on continents on offy ~90 yards. In BG/Arenas ~180. For instances default ~120.
+#        Max limited by active player zone: ~ 333
 #        Min limit is max aggro radius (45) * Rate.Creature.Aggro
 #
 #    Visibility.Distance.Object
@@ -958,8 +972,9 @@ GM.LowerSecurity         = 0
 ###################################################################################################################
 
 Visibility.GroupMode = 0
-Visibility.Distance.Creature      = 66
-Visibility.Distance.Player        = 66
+Visibility.Distance.Continents    = 90
+Visibility.Distance.Instances     = 120
+Visibility.Distance.BGArenas      = 180
 Visibility.Distance.Object        = 66
 Visibility.Distance.InFlight      = 66
 Visibility.Distance.Grey.Unit   = 1
