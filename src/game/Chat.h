@@ -326,6 +326,7 @@ class ChatHandler
         bool HandleReloadEventAISummonsCommand(const char* args);
         bool HandleReloadEventAIScriptsCommand(const char* args);
         bool HandleReloadCommandCommand(const char* args);
+        bool HandleReloadBattleEventCommand(const char* args);
         bool HandleReloadCreatureQuestRelationsCommand(const char* args);
         bool HandleReloadCreatureQuestInvRelationsCommand(const char* args);
         bool HandleReloadDbScriptStringCommand(const char* args);
@@ -490,7 +491,6 @@ class ChatHandler
         bool HandleWaterwalkCommand(const char* args);
 
         //! Development Commands
-        bool HandleSet32Bit(const char* args);
         bool HandleSaveAllCommand(const char* args);
 
         Player*   getSelectedPlayer();
