@@ -155,7 +155,7 @@ class ChatHandler
         bool HandleDebugSendSellErrorCommand(const char* args);
         bool HandleDebugSendSpellFailCommand(const char* args);
 
-        bool HandleEventActiveListCommand(const char* args);
+        bool HandleEventListCommand(const char* args);
         bool HandleEventStartCommand(const char* args);
         bool HandleEventStopCommand(const char* args);
         bool HandleEventInfoCommand(const char* args);
@@ -315,6 +315,7 @@ class ChatHandler
         bool HandleReloadEventAISummonsCommand(const char* args);
         bool HandleReloadEventAIScriptsCommand(const char* args);
         bool HandleReloadCommandCommand(const char* args);
+        bool HandleReloadBattleEventCommand(const char* args);
         bool HandleReloadCreatureQuestRelationsCommand(const char* args);
         bool HandleReloadCreatureQuestInvRelationsCommand(const char* args);
         bool HandleReloadDbScriptStringCommand(const char* args);

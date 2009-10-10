@@ -130,6 +130,87 @@ LOCK TABLES `areatrigger_teleport` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `battleground_events`
+--
+
+DROP TABLE IF EXISTS `battleground_events`;
+CREATE TABLE `battleground_events` (
+  `map` smallint(5) NOT NULL,
+  `event1` tinyint(3) unsigned NOT NULL,
+  `event2` tinyint(3) unsigned NOT NULL,
+  `description` varchar(255) NOT NULL,
+  PRIMARY KEY  (`map`,`event1`,`event2`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+--
+-- Dumping data for table `battleground_events`
+--
+
+LOCK TABLES `battleground_events` WRITE;
+/*!40000 ALTER TABLE `battleground_events` DISABLE KEYS */;
+INSERT INTO battleground_events (map, event1, event2, description) VALUES
+-- WS
+(489, 0, 0, 'Alliance Flag'),
+(489, 1, 0, 'Horde Flag'),
+(489, 2, 0, 'Spirit Guides'),
+(489, 254, 0, 'Doors'),
+-- AB
+(529, 0, 0, 'Stables - neutral'),
+(529, 0, 1, 'Stables - alliance contested'),
+(529, 0, 2, 'Stables - horde contested'),
+(529, 0, 3, 'Stables - alliance owned'),
+(529, 0, 4, 'Stables - horde owned'),
+(529, 1, 0, 'Blacksmith - neutral'),
+(529, 1, 1, 'Blacksmith - alliance contested'),
+(529, 1, 2, 'Blacksmith - horde contested'),
+(529, 1, 3, 'Blacksmith - alliance owned'),
+(529, 1, 4, 'Blacksmith - horde owned'),
+(529, 2, 0, 'Farm - neutral'),
+(529, 2, 1, 'Farm - alliance contested'),
+(529, 2, 2, 'Farm - horde contested'),
+(529, 2, 3, 'Farm - alliance owned'),
+(529, 2, 4, 'Farm - horde owned'),
+(529, 3, 0, 'Lumber Mill - neutral'),
+(529, 3, 1, 'Lumber Mill - alliance contested'),
+(529, 3, 2, 'Lumber Mill - horde contested'),
+(529, 3, 3, 'Lumber Mill - alliance owned'),
+(529, 3, 4, 'Lumber Mill - horde owned'),
+(529, 4, 0, 'Gold Mine - neutral'),
+(529, 4, 1, 'Gold Mine - alliance contested'),
+(529, 4, 2, 'Gold Mine - horde contested'),
+(529, 4, 3, 'Gold Mine - alliance owned'),
+(529, 4, 4, 'Gold Mine - horde owned'),
+(529, 254, 0, 'doors'),
+-- EY
+(566, 0, 0, 'Fel Reaver - alliance'),
+(566, 0, 1, 'Fel Reaver - horde'),
+(566, 0, 2, 'Fel Reaver - neutral'),
+(566, 1, 0, 'Blood Elf - alliance'),
+(566, 1, 1, 'Blood Elf - horde'),
+(566, 1, 2, 'Blood Elf - neutral'),
+(566, 2, 0, 'Draenei Ruins - alliance'),
+(566, 2, 1, 'Draenei Ruins - horde'),
+(566, 2, 2, 'Draenei Ruins - neutral'),
+(566, 3, 0, 'Mage Tower - alliance'),
+(566, 3, 1, 'Mage Tower - horde'),
+(566, 3, 2, 'Mage Tower - neutral'),
+(566, 4, 0, 'capture flag - Fel Reaver'),
+(566, 4, 1, 'capture flag - Blood Elf'),
+(566, 4, 2, 'capture flag - Draenei Ruins'),
+(566, 4, 3, 'capture flag - Mage Tower'),
+(566, 4, 4, 'capture flag - center'),
+(566, 254, 0, 'doors'),
+-- arenas
+(559, 253, 0, 'buffs'),
+(559, 254, 0, 'doors'),
+(572, 253, 0, 'buffs'),
+(572, 254, 0, 'doors'),
+(562, 253, 0, 'buffs'),
+(562, 254, 0, 'doors');
+/*!40000 ALTER TABLE `battleground_events` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `battleground_template`
 --
 
@@ -255,7 +336,7 @@ INSERT INTO `command` VALUES
 ('dismount',0,'Syntax: .dismount\r\n\r\nDismount you, if you are mounted.'),
 ('distance',3,'Syntax: .distance [$name/$link]\r\n\r\nDisplay the distance from your character to the selected creature/player, or player with name $name, or player/creature/gameobject pointed to shift-link with guid.'),
 ('event',2,'Syntax: .event #event_id\r\nShow details about event with #event_id.'),
-('event activelist',2,'Syntax: .event activelist\r\nShow list of currently active events.'),
+('event list',2,'Syntax: .event list\r\nShow list of currently active events.\r\nShow list of all events'),
 ('event start',2,'Syntax: .event start #event_id\r\nStart event #event_id. Set start time for event to current moment (change not saved in DB).'),
 ('event stop',2,'Syntax: .event stop #event_id\r\nStop event #event_id. Set start time for event to time in past that make current moment is event stop time (change not saved in DB).'),
 ('explorecheat',3,'Syntax: .explorecheat #flag\r\n\r\nReveal  or hide all maps for the selected player. If no player is selected, hide or reveal maps to you.\r\n\r\nUse a #flag of value 1 to reveal, use a #flag value of 0 to hide all maps.'),
@@ -297,7 +378,7 @@ INSERT INTO `command` VALUES
 ('honor addkill',2,'Syntax: .honor addkikll\r\n\r\nAdd the targeted unit as one of your pvp kills today (you only get honor if it\'s a racial leader or a player)'),
 ('honor update',2,'Syntax: .honor update\r\n\r\nForce the yesterday\'s honor fields to be updated with today\'s data, which will get reset for the selected player.'),
 ('hover',3,'Syntax: .hover #flag\r\n\r\nEnable or disable hover mode for your character.\r\n\r\nUse a #flag of value 1 to enable, use a #flag value of 0 to disable hover.'),
-('instance unbind',3,'Syntax: .instance unbind all\r\n  All of the selected player\'s binds will be cleared.'),
+('instance unbind',3,'Syntax: .instance unbind all\r\n  All of the selected player\'s binds will be cleared.\r\n.instance unbind #mapid\r\n Only the specified #mapid instance will be cleared.'),
 ('instance listbinds',3,'Syntax: .instance listbinds\r\n  Lists the binds of the selected player.'),
 ('instance stats',3,'Syntax: .instance stats\r\n  Shows statistics about instances.'),
 ('instance savedata',3,'Syntax: .instance savedata\r\n  Save the InstanceData for the current player\'s map to the DB.'),
@@ -521,6 +602,28 @@ LOCK TABLES `creature_addon` WRITE;
 /*!40000 ALTER TABLE `creature_addon` DISABLE KEYS */;
 /*!40000 ALTER TABLE `creature_addon` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `creature_battleground`
+--
+
+DROP TABLE IF EXISTS `creature_battleground`;
+CREATE TABLE `creature_battleground` (
+    `guid` int(10) unsigned NOT NULL COMMENT 'Creature\'s GUID',
+    `event1` tinyint(3) unsigned NOT NULL COMMENT 'main event',
+    `event2` tinyint(3) unsigned NOT NULL COMMENT 'sub event',
+    PRIMARY KEY  (`guid`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='Creature battleground indexing system';
+
+--
+-- Dumping data for table `creature_battleground`
+--
+
+LOCK TABLES `creature_battleground` WRITE;
+/*!40000 ALTER TABLE `creature_battleground` DISABLE KEYS */;
+/*!40000 ALTER TABLE `creature_battleground` ENABLE KEYS */;
+UNLOCK TABLES;
+
 
 --
 -- Table structure for table `creature_equip_template`
@@ -1356,6 +1459,27 @@ CREATE TABLE `gameobject` (
 LOCK TABLES `gameobject` WRITE;
 /*!40000 ALTER TABLE `gameobject` DISABLE KEYS */;
 /*!40000 ALTER TABLE `gameobject` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `gameobject_battleground`
+--
+
+DROP TABLE IF EXISTS `gameobject_battleground`;
+CREATE TABLE `gameobject_battleground` (
+    `guid` int(10) unsigned NOT NULL COMMENT 'GameObject\'s GUID',
+    `event1` tinyint(3) unsigned NOT NULL COMMENT 'main event',
+    `event2` tinyint(3) unsigned NOT NULL COMMENT 'sub event',
+    PRIMARY KEY  (`guid`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='GameObject battleground indexing system';
+
+--
+-- Dumping data for table `gameobject_battleground`
+--
+
+LOCK TABLES `gameobject_battleground` WRITE;
+/*!40000 ALTER TABLE `gameobject_battleground` DISABLE KEYS */;
+/*!40000 ALTER TABLE `gameobject_battleground` ENABLE KEYS */;
 UNLOCK TABLES;
 
 --
@@ -2933,6 +3057,8 @@ INSERT INTO `mangos_string` VALUES
 (1122,'(%u/%u +perm %u +temp %u)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1128,'%d - |cffffffff|Htaxinode:%u|h[%s %s]|h|r (Map:%u X:%f Y:%f Z:%f)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1129,'%d - %s %s (Map:%u X:%f Y:%f Z:%f)',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1130,'event started %u "%s"',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
+(1131,'event stopped %u "%s"',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL),
 (1200,'You try to view cinemitic %u but it doesn\'t exist.',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `mangos_string` ENABLE KEYS */;
 UNLOCK TABLES;

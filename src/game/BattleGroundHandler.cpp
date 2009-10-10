@@ -30,6 +30,7 @@
 #include "BattleGround.h"
 #include "ArenaTeam.h"
 #include "Language.h"
+#include "ScriptCalls.h"
 
 void WorldSession::HandleBattleMasterHelloOpcode( WorldPacket & recv_data )
 {
@@ -49,7 +50,10 @@ void WorldSession::HandleBattleMasterHelloOpcode( WorldPacket & recv_data )
 
     BattleGroundTypeId bgTypeId = sBattleGroundMgr.GetBattleMasterBG(unit->GetEntry());
 
-    if(!_player->GetBGAccessByLevel(bgTypeId))
+    if (bgTypeId == BATTLEGROUND_TYPE_NONE)
+        return;
+
+    if (!_player->GetBGAccessByLevel(bgTypeId))
     {
                                                             // temp, must be gossip message...
         SendNotification(LANG_YOUR_BG_LEVEL_REQ_ERROR);
@@ -606,7 +610,7 @@ void WorldSession::HandleAreaSpiritHealerQueryOpcode( WorldPacket & recv_data )
     if(!unit->isSpiritService())                            // it's not spirit service
         return;
 
-    sBattleGroundMgr.SendAreaSpiritHealerQueryOpcode(_player, bg, guid);
+    unit->SendAreaSpiritHealerQueryOpcode(GetPlayer());
 }
 
 void WorldSession::HandleAreaSpiritHealerQueueOpcode( WorldPacket & recv_data )
@@ -627,7 +631,7 @@ void WorldSession::HandleAreaSpiritHealerQueueOpcode( WorldPacket & recv_data )
     if(!unit->isSpiritService())                            // it's not spirit service
         return;
 
-    bg->AddPlayerToResurrectQueue(guid, _player->GetGUID());
+    Script->GossipHello(GetPlayer(), unit);
 }
 
 void WorldSession::HandleBattlemasterJoinArena( WorldPacket & recv_data )

@@ -28,6 +28,7 @@
 #include "Unit.h"
 #include "Language.h"
 #include "DBCStores.h"
+#include "BattleGroundMgr.h"
 
 enum MailShowFlags
 {
@@ -46,7 +47,7 @@ void MailItem::deleteItem( bool inDB )
             CharacterDatabase.PExecute("DELETE FROM item_instance WHERE guid='%u'", item->GetGUIDLow());
 
         delete item;
-        item=NULL;
+        item = NULL;
     }
 }
 
@@ -136,7 +137,7 @@ void WorldSession::HandleSendMail(WorldPacket & recv_data )
     Player *receive = objmgr.GetPlayer(rc);
 
     uint32 rc_team = 0;
-    uint8 mails_count = 0;                                  //do not allow to send to one player more than 100 mails
+    uint8 mails_count = 0;                                  // do not allow to send to one player more than 100 mails
 
     if(receive)
     {
@@ -160,7 +161,8 @@ void WorldSession::HandleSendMail(WorldPacket & recv_data )
         pl->SendMailResult(0, MAIL_SEND, MAIL_ERR_RECIPIENT_CAP_REACHED);
         return;
     }
-    // test the receiver's Faction...
+
+    // check the receiver's Faction...
     if (!sWorld.getConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_MAIL) && pl->GetTeam() != rc_team && GetSecurity() == SEC_PLAYER)
     {
         pl->SendMailResult(0, MAIL_SEND, MAIL_ERR_NOT_YOUR_TEAM);
@@ -244,7 +246,7 @@ void WorldSession::HandleSendMail(WorldPacket & recv_data )
 
                 pl->MoveItemFromInventory(mailItem.item->GetBagSlot(), mailItem.item->GetSlot(), true);
                 CharacterDatabase.BeginTransaction();
-                mailItem.item->DeleteFromInventoryDB();     //deletes item from character's inventory
+                mailItem.item->DeleteFromInventoryDB();     // deletes item from character's inventory
                 mailItem.item->SaveToDB();                  // recursive and not have transaction guard into self, item not in inventory and can be save standalone
                 // owner in data will set at mail receive and item extracting
                 CharacterDatabase.PExecute("UPDATE item_instance SET owner_guid = '%u' WHERE guid='%u'", GUID_LOPART(rc), mailItem.item->GetGUIDLow());
@@ -291,7 +293,7 @@ void WorldSession::HandleMailMarkAsRead(WorldPacket & recv_data )
         if (pl->unReadMails)
             --pl->unReadMails;
         m->checked = m->checked | MAIL_CHECK_MASK_READ;
-        // m->expire_time = time(NULL) + (30 * DAY);  // Expire time do not change at reading mail
+        // m->expire_time = time(NULL) + (30 * DAY);        // Expire time do not change at reading mail
         pl->m_mailsUpdated = true;
         m->state = MAIL_STATE_CHANGED;
     }
@@ -371,7 +373,7 @@ void WorldSession::HandleMailReturnToSender(WorldPacket & recv_data )
 
     SendReturnToSender(MAIL_NORMAL, GetAccountId(), m->receiver, m->sender, m->subject, m->itemTextId, &mi, m->money, m->mailTemplateId);
 
-    delete m;                                               //we can deallocate old mail
+    delete m;                                               // we can deallocate old mail
     pl->SendMailResult(mailId, MAIL_RETURNED_TO_SENDER, MAIL_OK);
 }
 
@@ -408,7 +410,7 @@ void WorldSession::SendReturnToSender(uint8 messageType, uint32 sender_acc, uint
         for(MailItemMap::iterator mailItemIter = mi->begin(); mailItemIter != mi->end(); ++mailItemIter)
         {
             MailItem& mailItem = mailItemIter->second;
-            mailItem.item->SaveToDB();                  // item not in inventory and can be save standalone
+            mailItem.item->SaveToDB();                      // item not in inventory and can be save standalone
             // owner in data will set at mail receive and item extracting
             CharacterDatabase.PExecute("UPDATE item_instance SET owner_guid = '%u' WHERE guid='%u'", receiver_guid, mailItem.item->GetGUIDLow());
         }
@@ -460,7 +462,7 @@ void WorldSession::HandleMailTakeItem(WorldPacket & recv_data )
         m->RemoveItem(itemId);
         m->removedItems.push_back(itemId);
 
-        if (m->COD > 0)                                     //if there is COD, take COD money from player and send them to sender by mail
+        if (m->COD > 0)                                     // if there is COD, take COD money from player and send them to sender by mail
         {
             uint64 sender_guid = MAKE_NEW_GUID(m->sender, 0, HIGHGUID_PLAYER);
             Player *receive = objmgr.GetPlayer(sender_guid);
@@ -503,7 +505,7 @@ void WorldSession::HandleMailTakeItem(WorldPacket & recv_data )
         pl->RemoveMItem(it->GetGUIDLow());
 
         uint32 count = it->GetCount();                      // save counts before store and possible merge with deleting
-        pl->MoveItemToInventory(dest,it,true);
+        pl->MoveItemToInventory(dest, it, true);
 
         CharacterDatabase.BeginTransaction();
         pl->SaveInventoryAndGoldToDB();
@@ -798,28 +800,32 @@ void WorldSession::SendMailTo(Player* receiver, uint8 messageType, uint8 station
 
     time_t deliver_time = time(NULL) + deliver_delay;
 
-    //expire time if COD 3 days, if no COD 30 days, if auction sale pending 1 hour
     uint32 expire_delay;
-    if(messageType == MAIL_AUCTION && !mi && !money)        // auction mail without any items and money
+    // auction mail without any items and money (auction sale note) pending 1 hour
+    if (messageType == MAIL_AUCTION && !mi && !money)
         expire_delay = HOUR;
+    // mail from battlemaster (rewardmarks) should last only one day
+    else if (messageType == MAIL_CREATURE && sBattleGroundMgr.GetBattleMasterBG(sender_guidlow_or_entry) != BATTLEGROUND_TYPE_NONE)
+        expire_delay = DAY;
+    // default case: expire time if COD 3 days, if no COD 30 days
     else
-        expire_delay = (COD > 0) ? 3*DAY : 30*DAY;
+        expire_delay = (COD > 0) ? 3 * DAY : 30 * DAY;
 
     time_t expire_time = deliver_time + expire_delay;
 
-    if(mailTemplateId && !sMailTemplateStore.LookupEntry(mailTemplateId))
+    if (mailTemplateId && !sMailTemplateStore.LookupEntry(mailTemplateId))
     {
         sLog.outError( "WorldSession::SendMailTo - Mail have not existed MailTemplateId (%u), remove at send", mailTemplateId);
         mailTemplateId = 0;
     }
 
-    if(receiver)
+    if (receiver)
     {
         receiver->AddNewMailDeliverTime(deliver_time);
 
-        if ( receiver->IsMailsLoaded() )
+        if (receiver->IsMailsLoaded())
         {
-            Mail * m = new Mail;
+            Mail *m = new Mail;
             m->messageID = mailId;
             m->messageType = messageType;
             m->stationery = stationery;
@@ -829,7 +835,7 @@ void WorldSession::SendMailTo(Player* receiver, uint8 messageType, uint8 station
             m->subject = subject;
             m->itemTextId = itemTextId;
 
-            if(mi)
+            if (mi)
                 m->AddAllItems(*mi);
 
             m->expire_time = expire_time;
@@ -839,22 +845,22 @@ void WorldSession::SendMailTo(Player* receiver, uint8 messageType, uint8 station
             m->checked = checked;
             m->state = MAIL_STATE_UNCHANGED;
 
-            receiver->AddMail(m);                           //to insert new mail to beginning of maillist
+            receiver->AddMail(m);                           // to insert new mail to beginning of maillist
 
-            if(mi)
+            if (mi)
             {
                 for(MailItemMap::iterator mailItemIter = mi->begin(); mailItemIter != mi->end(); ++mailItemIter)
                 {
                     MailItem& mailItem = mailItemIter->second;
-                    if(mailItem.item)
+                    if (mailItem.item)
                         receiver->AddMItem(mailItem.item);
                 }
             }
         }
-        else if(mi)
+        else if (mi)
             mi->deleteIncludedItems();
     }
-    else if(mi)
+    else if (mi)
         mi->deleteIncludedItems();
 
     CharacterDatabase.BeginTransaction();
@@ -863,7 +869,7 @@ void WorldSession::SendMailTo(Player* receiver, uint8 messageType, uint8 station
         "VALUES ('%u', '%u', '%u', '%u', '%u', '%u', '%s', '%u', '%u', '" UI64FMTD "','" UI64FMTD "', '%u', '%u', '%d')",
         mailId, messageType, stationery, mailTemplateId, sender_guidlow_or_entry, receiver_guidlow, subject.c_str(), itemTextId, (mi && !mi->empty() ? 1 : 0), (uint64)expire_time, (uint64)deliver_time, money, COD, checked);
 
-    if(mi)
+    if (mi)
     {
         for(MailItemMap::const_iterator mailItemIter = mi->begin(); mailItemIter != mi->end(); ++mailItemIter)
         {

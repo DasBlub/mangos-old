@@ -1300,6 +1300,9 @@ void World::SetInitialWorldSettings()
     sLog.outString( "Loading BattleMasters..." );
     sBattleGroundMgr.LoadBattleMastersEntry();
 
+    sLog.outString( "Loading BattleGround event indexes..." );
+    sBattleGroundMgr.LoadBattleEventIndexes();
+
     sLog.outString( "Loading GameTeleports..." );
     objmgr.LoadGameTele();
 
@@ -1341,10 +1344,10 @@ void World::SetInitialWorldSettings()
     objmgr.LoadDbScriptStrings();
 
     sLog.outString( "Loading CreatureEventAI Texts...");
-    CreatureEAI_Mgr.LoadCreatureEventAI_Texts();
+    CreatureEAI_Mgr.LoadCreatureEventAI_Texts(false);       // false, will checked in LoadCreatureEventAI_Scripts
 
     sLog.outString( "Loading CreatureEventAI Summons...");
-    CreatureEAI_Mgr.LoadCreatureEventAI_Summons();
+    CreatureEAI_Mgr.LoadCreatureEventAI_Summons(false);     // false, will checked in LoadCreatureEventAI_Scripts
 
     sLog.outString( "Loading CreatureEventAI Scripts...");
     CreatureEAI_Mgr.LoadCreatureEventAI_Scripts();
