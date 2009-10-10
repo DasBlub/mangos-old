@@ -366,6 +366,9 @@ void Creature::Update(uint32 diff)
                 else
                     setDeathState( JUST_ALIVED );
 
+                if (GetMap()->IsBattleGround() && ((BattleGroundMap*)GetMap())->GetBG())
+                    ((BattleGroundMap*)GetMap())->GetBG()->OnCreatureRespawn(this); // for alterac valley needed to adjust the correct level again
+
                 //Call AI respawn virtual function
                 i_AI->JustRespawned();
 
@@ -708,6 +711,9 @@ bool Creature::isCanInteractWithBattleMaster(Player* pPlayer, bool msg) const
         return false;
 
     BattleGroundTypeId bgTypeId = sBattleGroundMgr.GetBattleMasterBG(GetEntry());
+    if (bgTypeId == BATTLEGROUND_TYPE_NONE)
+        return false;
+
     if(!msg)
         return pPlayer->GetBGAccessByLevel(bgTypeId);
 
@@ -965,6 +971,11 @@ void Creature::OnGossipSelect(Player* player, uint32 option)
         case GOSSIP_OPTION_BATTLEFIELD:
         {
             BattleGroundTypeId bgTypeId = sBattleGroundMgr.GetBattleMasterBG(GetEntry());
+            if (bgTypeId == BATTLEGROUND_TYPE_NONE)
+            {
+                sLog.outError("a user (guid %u) requested battlegroundlist from a npc who is no battlemaster", player->GetGUIDLow());
+                return;
+            }
             player->GetSession()->SendBattlegGroundList( GetGUID(), bgTypeId );
             break;
         }
@@ -1526,7 +1537,7 @@ void Creature::setDeathState(DeathState s)
 
     if(s == JUST_DIED)
     {
-        SetUInt64Value(UNIT_FIELD_TARGET,0);                // remove target selection in any cases (can be set at aura remove in Unit::setDeathState)
+        SetTargetGUID(0);                                   // remove target selection in any cases (can be set at aura remove in Unit::setDeathState)
         SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
 
         if(!isPet() && GetCreatureInfo()->SkinLootId)
