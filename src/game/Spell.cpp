@@ -943,7 +943,7 @@ void Spell::DoSpellHitOnUnit(Unit *unit, const uint32 effectMask)
                 if (!unit->isInCombat() && unit->GetTypeId() != TYPEID_PLAYER && ((Creature*)unit)->AI())
                     ((Creature*)unit)->AI()->AttackedBy(m_caster);
 
-                unit->AddThreat(m_caster, 0.0f);
+                unit->AddThreat(m_caster);
                 unit->SetInCombatWith(m_caster);
                 m_caster->SetInCombatWith(unit);
 
@@ -966,7 +966,7 @@ void Spell::DoSpellHitOnUnit(Unit *unit, const uint32 effectMask)
             if( unit->isInCombat() && !(m_spellInfo->AttributesEx & SPELL_ATTR_EX_NO_INITIAL_AGGRO) )
             {
                 m_caster->SetInCombatState(unit->GetCombatTimer() > 0);
-                unit->getHostilRefManager().threatAssist(m_caster, 0.0f);
+                unit->getHostileRefManager().threatAssist(m_caster, 0.0f, m_spellInfo);
             }
         }
     }
@@ -3195,7 +3195,7 @@ void Spell::HandleThreatSpells(uint32 spellId)
     if(!threat)
         return;
 
-    m_targets.getUnitTarget()->AddThreat(m_caster, float(threat));
+    m_targets.getUnitTarget()->AddThreat(m_caster, float(threat), false, GetSpellSchoolMask(m_spellInfo), m_spellInfo);
 
     DEBUG_LOG("Spell %u, rank %u, added an additional %i threat", spellId, spellmgr.GetSpellRank(spellId), threat);
 }
@@ -3207,7 +3207,6 @@ void Spell::HandleEffects(Unit *pUnitTarget,Item *pItemTarget,GameObject *pGOTar
     gameObjTarget = pGOTarget;
 
     uint8 eff = m_spellInfo->Effect[i];
-    uint32 mechanic = m_spellInfo->EffectMechanic[i];
 
     damage = int32(CalculateDamage((uint8)i, unitTarget) * DamageMultiplier);
 
@@ -3663,26 +3662,44 @@ SpellCastResult Spell::CheckCast(bool strict)
             }
             case SPELL_EFFECT_TAMECREATURE:
             {
-                if (m_caster->GetTypeId() != TYPEID_PLAYER)
+                if (m_caster->GetTypeId() != TYPEID_PLAYER ||
+                    !m_targets.getUnitTarget() ||
+                    m_targets.getUnitTarget()->GetTypeId() == TYPEID_PLAYER)
                     return SPELL_FAILED_BAD_TARGETS;
 
-                if (!m_targets.getUnitTarget() || m_targets.getUnitTarget()->GetTypeId() == TYPEID_PLAYER)
-                    return SPELL_FAILED_BAD_IMPLICIT_TARGETS;
+                Player* plrCaster = (Player*)m_caster;
+
+                if(plrCaster->getClass() != CLASS_HUNTER)
+                {
+                    plrCaster->SendPetTameFailure(PETTAME_UNITSCANTTAME);
+                    return SPELL_FAILED_DONT_REPORT;
+                }
 
                 Creature* target = (Creature*)m_targets.getUnitTarget();
 
-                if (target->getLevel() > m_caster->getLevel())
-                    return SPELL_FAILED_HIGHLEVEL;
+                if(target->isPet() || target->isCharmed())
+                {
+                    plrCaster->SendPetTameFailure(PETTAME_CREATUREALREADYOWNED);
+                    return SPELL_FAILED_DONT_REPORT;
+                }
 
-                // use SMSG_PET_TAME_FAILURE?
-                if (!target->GetCreatureInfo()->isTameable ())
-                    return SPELL_FAILED_BAD_TARGETS;
+                if (target->getLevel() > plrCaster->getLevel())
+                {
+                    plrCaster->SendPetTameFailure(PETTAME_TOOHIGHLEVEL);
+                    return SPELL_FAILED_DONT_REPORT;
+                }
 
-                if(m_caster->GetPetGUID())
-                    return SPELL_FAILED_ALREADY_HAVE_SUMMON;
+                if (!target->GetCreatureInfo()->isTameable())
+                {
+                    plrCaster->SendPetTameFailure(PETTAME_NOTTAMEABLE);
+                    return SPELL_FAILED_DONT_REPORT;
+                }
 
-                if(m_caster->GetCharmGUID())
-                    return SPELL_FAILED_ALREADY_HAVE_CHARM;
+                if(plrCaster->GetPetGUID() || plrCaster->GetCharmGUID())
+                {
+                    plrCaster->SendPetTameFailure(PETTAME_ANOTHERSUMMONACTIVE);
+                    return SPELL_FAILED_DONT_REPORT;
+                }
 
                 break;
             }
@@ -4203,48 +4220,51 @@ SpellCastResult Spell::CheckCasterAuras() const
     {
         for(int i = 0; i < 3; ++i)
         {
-            if(m_spellInfo->EffectApplyAuraName[i] == SPELL_AURA_SCHOOL_IMMUNITY)
+            if (m_spellInfo->EffectApplyAuraName[i] == SPELL_AURA_SCHOOL_IMMUNITY)
                 school_immune |= uint32(m_spellInfo->EffectMiscValue[i]);
-            else if(m_spellInfo->EffectApplyAuraName[i] == SPELL_AURA_MECHANIC_IMMUNITY)
-                mechanic_immune |= 1 << uint32(m_spellInfo->EffectMiscValue[i]);
-            else if(m_spellInfo->EffectApplyAuraName[i] == SPELL_AURA_DISPEL_IMMUNITY)
+            else if (m_spellInfo->EffectApplyAuraName[i] == SPELL_AURA_MECHANIC_IMMUNITY)
+                mechanic_immune |= 1 << uint32(m_spellInfo->EffectMiscValue[i]-1);
+            else if (m_spellInfo->EffectApplyAuraName[i] == SPELL_AURA_MECHANIC_IMMUNITY_MASK)
+                mechanic_immune |= uint32(m_spellInfo->EffectMiscValue[i]);
+            else if (m_spellInfo->EffectApplyAuraName[i] == SPELL_AURA_DISPEL_IMMUNITY)
                 dispel_immune |= GetDispellMask(DispelType(m_spellInfo->EffectMiscValue[i]));
         }
         // immune movement impairment and loss of control
-        if(m_spellInfo->Id == 42292)
+        if (m_spellInfo->Id == 42292)
             mechanic_immune = IMMUNE_TO_MOVEMENT_IMPAIRMENT_AND_LOSS_CONTROL_MASK;
     }
 
     // Check whether the cast should be prevented by any state you might have.
     SpellCastResult prevented_reason = SPELL_CAST_OK;
     // Have to check if there is a stun aura. Otherwise will have problems with ghost aura apply while logging out
-    if(!(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_STUNNED) && m_caster->HasAuraType(SPELL_AURA_MOD_STUN))
+    uint32 unitflag = m_caster->GetUInt32Value(UNIT_FIELD_FLAGS);     // Get unit state
+    if (unitflag & UNIT_FLAG_STUNNED && !(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_STUNNED))
         prevented_reason = SPELL_FAILED_STUNNED;
-    else if(m_caster->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CONFUSED) && !(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_CONFUSED))
+    else if (unitflag & UNIT_FLAG_CONFUSED && !(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_CONFUSED))
         prevented_reason = SPELL_FAILED_CONFUSED;
-    else if(m_caster->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_FLEEING) && !(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_FEARED))
+    else if (unitflag & UNIT_FLAG_FLEEING && !(m_spellInfo->AttributesEx5 & SPELL_ATTR_EX5_USABLE_WHILE_FEARED))
         prevented_reason = SPELL_FAILED_FLEEING;
-    else if(m_caster->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SILENCED) && m_spellInfo->PreventionType==SPELL_PREVENTION_TYPE_SILENCE)
+    else if (unitflag & UNIT_FLAG_SILENCED && m_spellInfo->PreventionType == SPELL_PREVENTION_TYPE_SILENCE)
         prevented_reason = SPELL_FAILED_SILENCED;
-    else if(m_caster->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PACIFIED) && m_spellInfo->PreventionType==SPELL_PREVENTION_TYPE_PACIFY)
+    else if (unitflag & UNIT_FLAG_PACIFIED && m_spellInfo->PreventionType == SPELL_PREVENTION_TYPE_PACIFY)
         prevented_reason = SPELL_FAILED_PACIFIED;
 
     // Attr must make flag drop spell totally immune from all effects
-    if(prevented_reason != SPELL_CAST_OK)
+    if (prevented_reason != SPELL_CAST_OK)
     {
-        if(school_immune || mechanic_immune || dispel_immune)
+        if (school_immune || mechanic_immune || dispel_immune)
         {
             //Checking auras is needed now, because you are prevented by some state but the spell grants immunity.
             Unit::AuraMap const& auras = m_caster->GetAuras();
             for(Unit::AuraMap::const_iterator itr = auras.begin(); itr != auras.end(); ++itr)
             {
-                if(itr->second)
+                if (itr->second)
                 {
-                    if( GetSpellMechanicMask(itr->second->GetSpellProto(), itr->second->GetEffIndex()) & mechanic_immune )
+                    if (GetSpellMechanicMask(itr->second->GetSpellProto(), itr->second->GetEffIndex()) & mechanic_immune)
                         continue;
-                    if( GetSpellSchoolMask(itr->second->GetSpellProto()) & school_immune )
+                    if (GetSpellSchoolMask(itr->second->GetSpellProto()) & school_immune)
                         continue;
-                    if( (1<<(itr->second->GetSpellProto()->Dispel)) & dispel_immune)
+                    if ((1<<(itr->second->GetSpellProto()->Dispel)) & dispel_immune)
                         continue;
 
                     // Make a second check for spell failed so the right SPELL_FAILED message is returned.

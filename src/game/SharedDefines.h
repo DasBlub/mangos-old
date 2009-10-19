@@ -922,18 +922,22 @@ enum Mechanics
 
 // Used for spell 42292 Immune Movement Impairment and Loss of Control (0x49967da6)
 #define IMMUNE_TO_MOVEMENT_IMPAIRMENT_AND_LOSS_CONTROL_MASK ( \
-    (1<<MECHANIC_CHARM   )|(1<<MECHANIC_DISORIENTED )|(1<<MECHANIC_FEAR  )| \
-    (1<<MECHANIC_ROOT    )|(1<<MECHANIC_PACIFY   )|(1<<MECHANIC_SLEEP )| \
-    (1<<MECHANIC_SNARE   )|(1<<MECHANIC_STUN     )|(1<<MECHANIC_FREEZE)| \
-    (1<<MECHANIC_KNOCKOUT)|(1<<MECHANIC_POLYMORPH)|(1<<MECHANIC_BANISH)| \
-    (1<<MECHANIC_SHACKLE )|(1<<MECHANIC_TURN     )|(1<<MECHANIC_HORROR)| \
-    (1<<MECHANIC_DAZE    )|(1<<MECHANIC_SAPPED   ) )
+    (1<<(MECHANIC_CHARM   -1))|(1<<(MECHANIC_DISORIENTED-1))|(1<<(MECHANIC_FEAR  -1))| \
+    (1<<(MECHANIC_ROOT    -1))|(1<<(MECHANIC_PACIFY     -1))|(1<<(MECHANIC_SLEEP -1))| \
+    (1<<(MECHANIC_SNARE   -1))|(1<<(MECHANIC_STUN       -1))|(1<<(MECHANIC_FREEZE-1))| \
+    (1<<(MECHANIC_KNOCKOUT-1))|(1<<(MECHANIC_POLYMORPH  -1))|(1<<(MECHANIC_BANISH-1))| \
+    (1<<(MECHANIC_SHACKLE -1))|(1<<(MECHANIC_TURN       -1))|(1<<(MECHANIC_HORROR-1))| \
+    (1<<(MECHANIC_DAZE    -1))|(1<<(MECHANIC_SAPPED     -1)))
+
+#define IMMUNE_TO_ROOT_AND_SNARE_MASK ( \
+    (1<<(MECHANIC_ROOT-1))|(1<<(MECHANIC_SNARE-1)))
 
 // Daze and all croud control spells except polymorph are not removed
 #define MECHANIC_NOT_REMOVED_BY_SHAPESHIFT ( \
-    (1<<MECHANIC_CHARM )|(1<<MECHANIC_DISORIENTED)|(1<<MECHANIC_FEAR  )|(1<<MECHANIC_PACIFY )| \
-    (1<<MECHANIC_STUN  )|(1<<MECHANIC_FREEZE     )|(1<<MECHANIC_BANISH)|(1<<MECHANIC_SHACKLE)| \
-    (1<<MECHANIC_HORROR)|(1<<MECHANIC_TURN       )|(1<<MECHANIC_DAZE  )|(1<<MECHANIC_SAPPED ) )
+    (1<<(MECHANIC_CHARM -1))|(1<<(MECHANIC_DISORIENTED-1))|(1<<(MECHANIC_FEAR  -1))| \
+    (1<<(MECHANIC_PACIFY-1))|(1<<(MECHANIC_STUN       -1))|(1<<(MECHANIC_FREEZE-1))| \
+    (1<<(MECHANIC_BANISH-1))|(1<<(MECHANIC_SHACKLE    -1))|(1<<(MECHANIC_HORROR-1))| \
+    (1<<(MECHANIC_TURN  -1))|(1<<(MECHANIC_DAZE       -1))|(1<<(MECHANIC_SAPPED-1)))
 
 // Spell dispell type
 enum DispelType
@@ -2218,8 +2222,8 @@ enum PetDiet
 enum AiReaction
 {
     AI_REACTION_UNK1    = 1,
-    AI_REACTION_AGGRO   = 2,
-    AI_REACTION_UNK3    = 3,
+    AI_REACTION_AGGRO   = 2,                                // trigger aggro sound to play, if defined in dbc
+    AI_REACTION_UNK3    = 3,                                // seen happen at polymorph, possible when AI not in control of self?
     AI_REACTION_UNK4    = 4
 };
 
@@ -2452,6 +2456,24 @@ enum MailResponseResult
     MAIL_ERR_MAIL_AND_CHAT_SUSPENDED   = 17,
     MAIL_ERR_TOO_MANY_ATTACHMENTS      = 18,
     MAIL_ERR_MAIL_ATTACHMENT_INVALID   = 19,
+};
+
+// reasons for why pet tame may fail
+// in fact, these are also used elsewhere
+enum PetTameFailureReason
+{
+    PETTAME_INVALIDCREATURE         = 0,
+    PETTAME_TOOMANY                 = 1,
+    PETTAME_CREATUREALREADYOWNED    = 2,
+    PETTAME_NOTTAMEABLE             = 3,
+    PETTAME_ANOTHERSUMMONACTIVE     = 4,
+    PETTAME_UNITSCANTTAME           = 5,
+    PETTAME_NOPETAVAILABLE          = 6,  // not used in taming
+    PETTAME_INTERNALERROR           = 7,
+    PETTAME_TOOHIGHLEVEL            = 8,
+    PETTAME_DEAD                    = 9,  // not used in taming
+    PETTAME_NOTDEAD                 = 10, // not used in taming
+    PETTAME_UNKNOWNERROR            = 11
 };
 
 #endif

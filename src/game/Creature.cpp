@@ -361,6 +361,9 @@ void Creature::Update(uint32 diff)
                 else
                     setDeathState( JUST_ALIVED );
 
+                if (GetMap()->IsBattleGround() && ((BattleGroundMap*)GetMap())->GetBG())
+                    ((BattleGroundMap*)GetMap())->GetBG()->OnCreatureRespawn(this); // for alterac valley needed to adjust the correct level again
+
                 //Call AI respawn virtual function
                 i_AI->JustRespawned();
 
@@ -1773,6 +1776,18 @@ bool Creature::IsVisibleInGridForPlayer(Player* pl) const
     return false;
 }
 
+void Creature::SendAIReaction(AiReaction reactionType)
+{
+    WorldPacket data(SMSG_AI_REACTION, 12);
+
+    data << uint64(GetGUID());
+    data << uint32(reactionType);
+
+    ((WorldObject*)this)->SendMessageToSet(&data, true);
+
+    sLog.outDebug("WORLD: Sent SMSG_AI_REACTION, type %u.", reactionType);
+}
+
 void Creature::CallAssistance()
 {
     if( !m_AlreadyCallAssistance && getVictim() && !isPet() && !isCharmed())
@@ -2035,7 +2050,7 @@ void Creature::SetInCombatWithZone()
             if (pPlayer->isAlive())
             {
                 pPlayer->SetInCombatWith(this);
-                AddThreat(pPlayer, 0.0f);
+                AddThreat(pPlayer);
             }
         }
     }

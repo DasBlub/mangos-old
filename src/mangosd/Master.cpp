@@ -383,7 +383,7 @@ int Master::Run()
 
         cliThread->wait();
 
-        #else 
+        #else
 
         cliThread->destroy();
 
@@ -404,8 +404,8 @@ int Master::Run()
 bool Master::_StartDB()
 {
     ///- Get world database info from configuration file
-    std::string dbstring;
-    if(!sConfig.GetString("WorldDatabaseInfo", &dbstring))
+    std::string dbstring = sConfig.GetStringDefault("WorldDatabaseInfo", "");
+    if(dbstring.empty())
     {
         sLog.outError("Database not specified in configuration file");
         return false;
@@ -422,7 +422,8 @@ bool Master::_StartDB()
     if(!WorldDatabase.CheckRequiredField("db_version",REVISION_DB_MANGOS))
         return false;
 
-    if(!sConfig.GetString("CharacterDatabaseInfo", &dbstring))
+    dbstring = sConfig.GetStringDefault("CharacterDatabaseInfo", "");
+    if(dbstring.empty())
     {
         sLog.outError("Character Database not specified in configuration file");
         return false;
@@ -440,7 +441,8 @@ bool Master::_StartDB()
         return false;
 
     ///- Get login database info from configuration file
-    if(!sConfig.GetString("LoginDatabaseInfo", &dbstring))
+    dbstring = sConfig.GetStringDefault("LoginDatabaseInfo", "");
+    if(dbstring.empty())
     {
         sLog.outError("Login database not specified in configuration file");
         return false;

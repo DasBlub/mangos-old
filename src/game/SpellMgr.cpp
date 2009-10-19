@@ -387,7 +387,8 @@ bool IsPositiveEffect(uint32 spellId, uint32 effIndex)
             // some explicitly required dummy effect sets
             switch(spellId)
             {
-                case 28441: return false;                   // AB Effect 000
+                case 28441:                                 // AB Effect 000
+                    return false;
                 default:
                     break;
             }
@@ -417,6 +418,7 @@ bool IsPositiveEffect(uint32 spellId, uint32 effIndex)
                         case 38637:                         // Nether Exhaustion (red)
                         case 38638:                         // Nether Exhaustion (green)
                         case 38639:                         // Nether Exhaustion (blue)
+                        case 44689:                         // Relay Race Accept Hidden Debuff - DND
                             return false;
                         // some spells have unclear target modes for selection, so just make effect positive
                         case 27184:
@@ -2820,13 +2822,6 @@ DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellEntry const* spellproto
     // Explicit Diminishing Groups
     switch(spellproto->SpellFamilyName)
     {
-        case SPELLFAMILY_MAGE:
-        {
-            // Polymorph
-            if ((spellproto->SpellFamilyFlags & UI64LIT(0x00001000000)) && spellproto->EffectApplyAuraName[0]==SPELL_AURA_MOD_CONFUSE)
-                return DIMINISHING_POLYMORPH;
-            break;
-        }
         case SPELLFAMILY_ROGUE:
         {
             // Kidney Shot
@@ -2846,9 +2841,6 @@ DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellEntry const* spellproto
         }
         case SPELLFAMILY_WARLOCK:
         {
-            // Death Coil
-            if (spellproto->SpellFamilyFlags & UI64LIT(0x00000080000))
-                return DIMINISHING_DEATHCOIL;
             // Fear
             if (spellproto->SpellFamilyFlags & UI64LIT(0x40840000000))
                 return DIMINISHING_WARLOCK_FEAR;
@@ -2876,30 +2868,34 @@ DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellEntry const* spellproto
     }
 
     // Get by mechanic
-    for (uint8 i=0;i<3;++i)
-    {
-        if (spellproto->Mechanic      == MECHANIC_STUN    || spellproto->EffectMechanic[i] == MECHANIC_STUN)
-            return triggered ? DIMINISHING_TRIGGER_STUN : DIMINISHING_CONTROL_STUN;
-        else if (spellproto->Mechanic == MECHANIC_SLEEP   || spellproto->EffectMechanic[i] == MECHANIC_SLEEP)
-            return DIMINISHING_SLEEP;
-        else if (spellproto->Mechanic == MECHANIC_ROOT    || spellproto->EffectMechanic[i] == MECHANIC_ROOT)
-            return triggered ? DIMINISHING_TRIGGER_ROOT : DIMINISHING_CONTROL_ROOT;
-        else if (spellproto->Mechanic == MECHANIC_FEAR    || spellproto->EffectMechanic[i] == MECHANIC_FEAR)
-            return DIMINISHING_FEAR;
-        else if (spellproto->Mechanic == MECHANIC_CHARM   || spellproto->EffectMechanic[i] == MECHANIC_CHARM)
-            return DIMINISHING_CHARM;
-        else if (spellproto->Mechanic == MECHANIC_SILENCE || spellproto->EffectMechanic[i] == MECHANIC_SILENCE)
-            return DIMINISHING_SILENCE;
-        else if (spellproto->Mechanic == MECHANIC_DISARM  || spellproto->EffectMechanic[i] == MECHANIC_DISARM)
-            return DIMINISHING_DISARM;
-        else if (spellproto->Mechanic == MECHANIC_FREEZE  || spellproto->EffectMechanic[i] == MECHANIC_FREEZE)
-            return DIMINISHING_FREEZE;
-        else if (spellproto->Mechanic == MECHANIC_KNOCKOUT|| spellproto->EffectMechanic[i] == MECHANIC_KNOCKOUT ||
-                 spellproto->Mechanic == MECHANIC_SAPPED  || spellproto->EffectMechanic[i] == MECHANIC_SAPPED)
-            return DIMINISHING_KNOCKOUT;
-        else if (spellproto->Mechanic == MECHANIC_BANISH  || spellproto->EffectMechanic[i] == MECHANIC_BANISH)
-            return DIMINISHING_BANISH;
-    }
+    uint32 mechanic = GetAllSpellMechanicMask(spellproto);
+    if (!mechanic)
+        return DIMINISHING_NONE;
+
+    if (mechanic & (1<<(MECHANIC_STUN-1)))
+        return triggered ? DIMINISHING_TRIGGER_STUN : DIMINISHING_CONTROL_STUN;
+    if (mechanic & (1<<(MECHANIC_SLEEP-1)))
+        return DIMINISHING_SLEEP;
+    if (mechanic & (1<<(MECHANIC_POLYMORPH-1)))
+        return DIMINISHING_POLYMORPH;
+    if (mechanic & (1<<(MECHANIC_ROOT-1)))
+        return triggered ? DIMINISHING_TRIGGER_ROOT : DIMINISHING_CONTROL_ROOT;
+    if (mechanic & (1<<(MECHANIC_FEAR-1)))
+        return DIMINISHING_FEAR;
+    if (mechanic & (1<<(MECHANIC_CHARM-1)))
+        return DIMINISHING_CHARM;
+    if (mechanic & (1<<(MECHANIC_SILENCE-1)))
+        return DIMINISHING_SILENCE;
+    if (mechanic & (1<<(MECHANIC_DISARM-1)))
+        return DIMINISHING_DISARM;
+    if (mechanic & (1<<(MECHANIC_FREEZE-1)))
+        return DIMINISHING_FREEZE;
+    if (mechanic & ((1<<(MECHANIC_KNOCKOUT-1))|(1<<(MECHANIC_SAPPED-1))))
+        return DIMINISHING_KNOCKOUT;
+    if (mechanic & (1<<(MECHANIC_BANISH-1)))
+        return DIMINISHING_BANISH;
+    if (mechanic & (1<<(MECHANIC_HORROR-1)))
+        return DIMINISHING_DEATHCOIL;
 
     return DIMINISHING_NONE;
 }
