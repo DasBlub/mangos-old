@@ -122,6 +122,8 @@ pkgdata_DATA = \
 	075_8608_02_mangos_battleground_events.sql \
 	076_8702_01_characters_character_reputation.sql \
 	077_8728_01_realmd_account.sql \
+	078_8749_01_mangos_mail_loot_template.sql \
+	079_8721_01_characters_guild.sql \
 	README
 
 ## Additional files to include when running 'make dist'
@@ -223,4 +225,6 @@ EXTRA_DIST = \
 	075_8608_02_mangos_battleground_events.sql \
 	076_8702_01_characters_character_reputation.sql \
 	077_8728_01_realmd_account.sql \
+	078_8749_01_mangos_mail_loot_template.sql \
+	079_8721_01_characters_guild.sql \
 	README
