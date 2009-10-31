@@ -102,8 +102,6 @@ template<> void addUnitState(Creature *obj, CellPair const& cell_pair)
     Cell cell(cell_pair);
 
     obj->SetCurrentCell(cell);
-    if(obj->isSpiritService())
-        obj->setDeathState(DEAD);
 }
 
 template <class T>
@@ -113,8 +111,9 @@ void LoadHelper(CellGuidSet const& guid_set, CellPair &cell, GridRefManager<T> &
 
     for(CellGuidSet::const_iterator i_guid = guid_set.begin(); i_guid != guid_set.end(); ++i_guid)
     {
-        T* obj = new T;
         uint32 guid = *i_guid;
+
+        T* obj = new T;
         //sLog.outString("DEBUG: LoadHelper from table: %s for (guid: %u) Loading",table,guid);
         if(!obj->LoadFromDB(guid, map))
         {

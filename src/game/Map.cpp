@@ -56,6 +56,7 @@ struct ScriptAction
 
 Map::~Map()
 {
+    ObjectAccessor::DelinkMap(this);
     UnloadAll(true);
 
     if(!m_scriptSchedule.empty())
@@ -201,7 +202,8 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode, Map* _par
   i_id(id), i_InstanceId(InstanceId), m_unloadTimer(0),
   m_activeNonPlayersIter(m_activeNonPlayers.end()),
   i_gridExpiry(expiry), m_parentMap(_parent ? _parent : this),
-  m_VisibleDistance(DEFAULT_VISIBILITY_DISTANCE)
+  m_VisibleDistance(DEFAULT_VISIBILITY_DISTANCE),
+  m_hiDynObjectGuid(1), m_hiPetGuid(1), m_hiVehicleGuid(1)
 {
     for(unsigned int idx=0; idx < MAX_NUMBER_OF_GRIDS; ++idx)
     {
@@ -212,6 +214,7 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode, Map* _par
             setNGrid(NULL, idx, j);
         }
     }
+    ObjectAccessor::LinkMap(this);
 
     //lets initialize visibility distance for map
     Map::InitVisibilityDistance();
@@ -695,6 +698,9 @@ void Map::Update(const uint32 &t_diff)
         }
     }
 
+    // Send world objects and item update field changes
+    SendObjectUpdates();
+
     // Don't unload grids if it's battleground, since we may have manually added GOs,creatures, those doesn't load from DB at grid re-load !
     // This isn't really bother us, since as soon as we have instanced BG-s, the whole map unloads as the BG gets ended
     if (!IsBattleGroundOrArena())
@@ -716,6 +722,11 @@ void Map::Update(const uint32 &t_diff)
 
 void Map::Remove(Player *player, bool remove)
 {
+    if(remove)
+        player->CleanupsBeforeDelete();
+    else
+        player->RemoveFromWorld();
+
     // this may be called during Map::Update
     // after decrement+unlink, ++m_mapRefIter will continue correctly
     // when the first element of the list is being removed
@@ -727,11 +738,7 @@ void Map::Remove(Player *player, bool remove)
     CellPair p = MaNGOS::ComputeCellPair(player->GetPositionX(), player->GetPositionY());
     if(p.x_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP || p.y_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP)
     {
-        if(remove)
-            player->CleanupsBeforeDelete();
-
         // invalid coordinates
-        player->RemoveFromWorld();
         player->ResetMap();
 
         if( remove )
@@ -752,10 +759,6 @@ void Map::Remove(Player *player, bool remove)
     NGridType *grid = getNGrid(cell.GridX(), cell.GridY());
     assert(grid != NULL);
 
-    if(remove)
-        player->CleanupsBeforeDelete();
-
-    player->RemoveFromWorld();
     RemoveFromGrid(player,grid,cell);
 
     SendRemoveTransports(player);
@@ -770,7 +773,30 @@ bool Map::RemoveBones(uint64 guid, float x, float y)
 {
     if (IsRemovalGrid(x, y))
     {
-        Corpse * corpse = ObjectAccessor::Instance().GetObjectInWorld(GetId(), x, y, guid, (Corpse*)NULL);
+        Corpse* corpse = ObjectAccessor::GetCorpseInMap(guid,GetId());
+        if (!corpse)
+            return false;
+
+        CellPair p = MaNGOS::ComputeCellPair(x,y);
+        if(p.x_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP || p.y_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP )
+        {
+            sLog.outError("Map::RemoveBones: invalid coordinates supplied X:%f Y:%f grid cell [%u:%u]", x, y, p.x_coord, p.y_coord);
+            return false;
+        }
+
+        CellPair q = MaNGOS::ComputeCellPair(corpse->GetPositionX(),corpse->GetPositionY());
+        if(q.x_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP || q.y_coord >= TOTAL_NUMBER_OF_CELLS_PER_MAP )
+        {
+            sLog.outError("Map::RemoveBones: object (GUID: %u TypeId: %u) has invalid coordinates X:%f Y:%f grid cell [%u:%u]", corpse->GetGUIDLow(), corpse->GetTypeId(), corpse->GetPositionX(), corpse->GetPositionY(), q.x_coord, q.y_coord);
+            return false;
+        }
+
+        int32 dx = int32(p.x_coord) - int32(q.x_coord);
+        int32 dy = int32(p.y_coord) - int32(q.y_coord);
+
+        if (dx <= -2 || dx >= 2 || dy <= -2 || dy >= 2)
+            return false;
+
         if(corpse && corpse->GetTypeId() == TYPEID_CORPSE && corpse->GetType() == CORPSE_BONES)
             corpse->DeleteBonesFromWorld();
         else
@@ -801,7 +827,11 @@ Map::Remove(T *obj, bool remove)
     if(obj->isActiveObject())
         RemoveFromActive(obj);
 
-    obj->RemoveFromWorld();
+    if(remove)
+        obj->CleanupsBeforeDelete();
+    else
+        obj->RemoveFromWorld();
+
     RemoveFromGrid(obj,grid,cell);
 
     UpdateObjectVisibility(obj,cell,p);
@@ -2117,28 +2147,26 @@ void Map::RemoveAllObjectsInRemoveList()
         {
             case TYPEID_CORPSE:
             {
-                Corpse* corpse = ObjectAccessor::Instance().GetCorpse(*obj, obj->GetGUID());
+                // ??? WTF
+                Corpse* corpse = GetCorpse(obj->GetGUID());
                 if (!corpse)
                     sLog.outError("Try delete corpse/bones %u that not in map", obj->GetGUIDLow());
                 else
                     Remove(corpse,true);
                 break;
             }
-        case TYPEID_DYNAMICOBJECT:
-            Remove((DynamicObject*)obj,true);
-            break;
-        case TYPEID_GAMEOBJECT:
-            Remove((GameObject*)obj,true);
-            break;
-        case TYPEID_UNIT:
-            // in case triggered sequence some spell can continue casting after prev CleanupsBeforeDelete call
-            // make sure that like sources auras/etc removed before destructor start
-            ((Creature*)obj)->CleanupsBeforeDelete ();
-            Remove((Creature*)obj,true);
-            break;
-        default:
-            sLog.outError("Non-grid object (TypeId: %u) in grid object removing list, ignored.",obj->GetTypeId());
-            break;
+            case TYPEID_DYNAMICOBJECT:
+                Remove((DynamicObject*)obj,true);
+                break;
+            case TYPEID_GAMEOBJECT:
+                Remove((GameObject*)obj,true);
+                break;
+            case TYPEID_UNIT:
+                Remove((Creature*)obj,true);
+                break;
+            default:
+                sLog.outError("Non-grid object (TypeId: %u) in grid object removing list, ignored.",obj->GetTypeId());
+                break;
         }
     }
     //sLog.outDebug("Object remover 2 check.");
@@ -2761,19 +2789,19 @@ void Map::ScriptsProcess()
                     break;
                 }
                 case HIGHGUID_UNIT:
-                    source = HashMapHolder<Creature>::Find(step.sourceGUID);
+                    source = GetCreature(step.sourceGUID);
                     break;
                 case HIGHGUID_PET:
-                    source = HashMapHolder<Pet>::Find(step.sourceGUID);
+                    source = GetPet(step.sourceGUID);
                     break;
                 case HIGHGUID_VEHICLE:
-                    source = HashMapHolder<Vehicle>::Find(step.sourceGUID);
+                    source = GetVehicle(step.sourceGUID);
                     break;
                 case HIGHGUID_PLAYER:
                     source = HashMapHolder<Player>::Find(step.sourceGUID);
                     break;
                 case HIGHGUID_GAMEOBJECT:
-                    source = HashMapHolder<GameObject>::Find(step.sourceGUID);
+                    source = GetGameObject(step.sourceGUID);
                     break;
                 case HIGHGUID_CORPSE:
                     source = HashMapHolder<Corpse>::Find(step.sourceGUID);
@@ -2793,19 +2821,19 @@ void Map::ScriptsProcess()
             switch(GUID_HIPART(step.targetGUID))
             {
                 case HIGHGUID_UNIT:
-                    target = HashMapHolder<Creature>::Find(step.targetGUID);
+                    target = GetCreature(step.targetGUID);
                     break;
                 case HIGHGUID_PET:
-                    target = HashMapHolder<Pet>::Find(step.targetGUID);
+                    target = GetPet(step.targetGUID);
                     break;
                 case HIGHGUID_VEHICLE:
-                    target = HashMapHolder<Vehicle>::Find(step.targetGUID);
+                    target = GetVehicle(step.targetGUID);
                     break;
                 case HIGHGUID_PLAYER:                       // empty GUID case also
                     target = HashMapHolder<Player>::Find(step.targetGUID);
                     break;
                 case HIGHGUID_GAMEOBJECT:
-                    target = HashMapHolder<GameObject>::Find(step.targetGUID);
+                    target = GetGameObject(step.targetGUID);
                     break;
                 case HIGHGUID_CORPSE:
                     target = HashMapHolder<Corpse>::Find(step.targetGUID);
@@ -3381,44 +3409,125 @@ void Map::ScriptsProcess()
     return;
 }
 
-Creature*
-Map::GetCreature(uint64 guid)
+Creature* Map::GetCreature(uint64 guid)
 {
-    Creature * ret = ObjectAccessor::GetObjectInWorld(guid, (Creature*)NULL);
-    if(!ret)
-        return NULL;
-
-    if(ret->GetMapId() != GetId())
-        return NULL;
-
-    if(ret->GetInstanceId() != GetInstanceId())
-        return NULL;
-
-    return ret;
+    return m_objectsStore.find<Creature>(guid, (Creature*)NULL);
 }
 
-GameObject*
-Map::GetGameObject(uint64 guid)
+Vehicle* Map::GetVehicle(uint64 guid)
 {
-    GameObject * ret = ObjectAccessor::GetObjectInWorld(guid, (GameObject*)NULL);
-    if(!ret)
+    return m_objectsStore.find<Vehicle>(guid, (Vehicle*)NULL);
+}
+
+Pet* Map::GetPet(uint64 guid)
+{
+    return m_objectsStore.find<Pet>(guid, (Pet*)NULL);
+}
+
+Corpse* Map::GetCorpse(uint64 guid)
+{
+    Corpse * ret = ObjectAccessor::GetCorpseInMap(guid,GetId());
+    if (!ret)
         return NULL;
-    if(ret->GetMapId() != GetId())
-        return NULL;
-    if(ret->GetInstanceId() != GetInstanceId())
+    if (ret->GetInstanceId() != GetInstanceId())
         return NULL;
     return ret;
 }
 
-DynamicObject*
-Map::GetDynamicObject(uint64 guid)
+Creature* Map::GetCreatureOrPetOrVehicle(uint64 guid)
 {
-    DynamicObject * ret = ObjectAccessor::GetObjectInWorld(guid, (DynamicObject*)NULL);
-    if(!ret)
+    if (IS_PLAYER_GUID(guid))
         return NULL;
-    if(ret->GetMapId() != GetId())
-        return NULL;
-    if(ret->GetInstanceId() != GetInstanceId())
-        return NULL;
-    return ret;
+
+    if (IS_PET_GUID(guid))
+        return GetPet(guid);
+
+    if (IS_VEHICLE_GUID(guid))
+        return GetVehicle(guid);
+
+    return GetCreature(guid);
 }
+
+GameObject* Map::GetGameObject(uint64 guid)
+{
+    return m_objectsStore.find<GameObject>(guid, (GameObject*)NULL);
+}
+
+DynamicObject* Map::GetDynamicObject(uint64 guid)
+{
+    return m_objectsStore.find<DynamicObject>(guid, (DynamicObject*)NULL);
+}
+
+WorldObject* Map::GetWorldObject(uint64 guid)
+{
+    switch(GUID_HIPART(guid))
+    {
+        case HIGHGUID_PLAYER:       return ObjectAccessor::FindPlayer(guid);
+        case HIGHGUID_GAMEOBJECT:   return GetGameObject(guid);
+        case HIGHGUID_UNIT:         return GetCreature(guid);
+        case HIGHGUID_PET:          return GetPet(guid);
+        case HIGHGUID_VEHICLE:      return GetVehicle(guid);
+        case HIGHGUID_DYNAMICOBJECT:return GetDynamicObject(guid);
+        case HIGHGUID_CORPSE:       return GetCorpse(guid);
+        case HIGHGUID_MO_TRANSPORT:
+        case HIGHGUID_TRANSPORT:
+        default:                    break;
+    }
+
+    return NULL;
+}
+
+void Map::SendObjectUpdates()
+{
+    UpdateDataMapType update_players;
+
+    while(!i_objectsToClientUpdate.empty())
+    {
+        Object* obj = *i_objectsToClientUpdate.begin();
+        i_objectsToClientUpdate.erase(i_objectsToClientUpdate.begin());
+        obj->BuildUpdateData(update_players);
+    }
+
+    WorldPacket packet;                                     // here we allocate a std::vector with a size of 0x10000
+    for(UpdateDataMapType::iterator iter = update_players.begin(); iter != update_players.end(); ++iter)
+    {
+        iter->second.BuildPacket(&packet);
+        iter->first->GetSession()->SendPacket(&packet);
+        packet.clear();                                     // clean the string
+    }
+}
+
+uint32 Map::GenerateLocalLowGuid(HighGuid guidhigh)
+{
+    // TODO: for map local guid counters possible force reload map instead shutdown server at guid counter overflow
+    switch(guidhigh)
+    {
+        case HIGHGUID_DYNAMICOBJECT:
+            if (m_hiDynObjectGuid >= 0xFFFFFFFE)
+            {
+                sLog.outError("DynamicObject guid overflow!! Can't continue, shutting down server. ");
+                World::StopNow(ERROR_EXIT_CODE);
+            }
+            return m_hiDynObjectGuid++;
+        case HIGHGUID_PET:
+            if(m_hiPetGuid>=0x00FFFFFE)
+            {
+                sLog.outError("Pet guid overflow!! Can't continue, shutting down server. ");
+                World::StopNow(ERROR_EXIT_CODE);
+            }
+            return m_hiPetGuid++;
+        case HIGHGUID_VEHICLE:
+            if(m_hiVehicleGuid>=0x00FFFFFF)
+            {
+                sLog.outError("Vehicle guid overflow!! Can't continue, shutting down server. ");
+                World::StopNow(ERROR_EXIT_CODE);
+            }
+            return m_hiVehicleGuid++;
+        default:
+            ASSERT(0);
+    }
+
+    ASSERT(0);
+    return 0;
+}
+

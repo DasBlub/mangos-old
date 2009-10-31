@@ -141,14 +141,18 @@ Creature::~Creature()
 void Creature::AddToWorld()
 {
     ///- Register the creature for guid lookup
-    if(!IsInWorld()) ObjectAccessor::Instance().AddObject(this);
+    if(!IsInWorld() && GetGUIDHigh()==HIGHGUID_UNIT)
+        GetMap()->GetObjectsStore().insert<Creature>(GetGUID(), (Creature*)this);
+
     Unit::AddToWorld();
 }
 
 void Creature::RemoveFromWorld()
 {
     ///- Remove the creature from the accessor
-    if(IsInWorld()) ObjectAccessor::Instance().RemoveObject(this);
+    if(IsInWorld() && GetGUIDHigh()==HIGHGUID_UNIT)
+        GetMap()->GetObjectsStore().erase<Creature>(GetGUID(), (Creature*)NULL);
+
     Unit::RemoveFromWorld();
 }
 
@@ -184,18 +188,19 @@ bool Creature::InitEntry(uint32 Entry, uint32 team, const CreatureData *data )
         return false;
     }
 
-    // get heroic mode entry
+    // get difficulty 1 mode entry
     uint32 actualEntry = Entry;
     CreatureInfo const *cinfo = normalInfo;
-    if(normalInfo->HeroicEntry)
+    if(normalInfo->DifficultyEntry1)
     {
         //we already have valid Map pointer for current creature!
-        if(GetMap()->IsHeroic())
+        //FIXME: spawn modes 2-3 must have own case DifficultyEntryN
+        if(GetMap()->GetSpawnMode() > 0)
         {
-            cinfo = objmgr.GetCreatureTemplate(normalInfo->HeroicEntry);
+            cinfo = objmgr.GetCreatureTemplate(normalInfo->DifficultyEntry1);
             if(!cinfo)
             {
-                sLog.outErrorDb("Creature::UpdateEntry creature heroic entry %u does not exist.", actualEntry);
+                sLog.outErrorDb("Creature::UpdateEntry creature difficulty 1 entry %u does not exist.", actualEntry);
                 return false;
             }
         }
@@ -332,15 +337,6 @@ void Creature::Update(uint32 diff)
             break;
         case DEAD:
         {
-            if (isSpiritService())
-            {
-                Unit::Update( diff );
-                // do not allow the AI to be changed during update
-                m_AI_locked = true;
-                i_AI->UpdateAI(diff);
-                m_AI_locked = false;
-                break;                                      // they don't should respawn
-            }
             if( m_respawnTime <= time(NULL) )
             {
                 DEBUG_LOG("Respawning...");
@@ -374,7 +370,7 @@ void Creature::Update(uint32 diff)
 
                 uint16 poolid = poolhandler.IsPartOfAPool(GetGUIDLow(), GetTypeId());
                 if (poolid)
-                    poolhandler.UpdatePool(poolid, GetGUIDLow(), GetTypeId());
+                    poolhandler.UpdatePool(poolid, GetGUIDLow(), TYPEID_UNIT);
                 else
                     GetMap()->Add(this);
             }
@@ -1357,7 +1353,17 @@ bool Creature::LoadFromDB(uint32 guid, Map *map)
     }
 
     m_DBTableGuid = guid;
-    if (map->GetInstanceId() != 0) guid = objmgr.GenerateLowGuid(HIGHGUID_UNIT);
+    if (map->GetInstanceId() == 0)
+    {
+        // Creature can be loaded already in map if grid has been unloaded while creature walk to another grid
+        // FIXME: until creature guids is global and for instances used dynamic generated guids
+        // in instance possible load creature duplicates with same DB guid but different in game guids
+        // This will be until implementing per-map creature guids
+        if (map->GetCreature(MAKE_NEW_GUID(guid,data->id,HIGHGUID_UNIT)))
+            return false;
+    }
+    else
+        guid = objmgr.GenerateLowGuid(HIGHGUID_UNIT);
 
     uint16 team = 0;
     if(!Create(guid,map,data->phaseMask,data->id,team,data))
@@ -1559,10 +1565,7 @@ void Creature::setDeathState(DeathState s)
         RemoveFlag (UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
         AddMonsterMoveFlag(MONSTER_MOVE_WALK);
         SetUInt32Value(UNIT_NPC_FLAGS, cinfo->npcflag);
-        if (!isSpiritService())
-            Unit::setDeathState(ALIVE);
-        else
-            Unit::setDeathState(DEAD);
+        Unit::setDeathState(ALIVE);
         clearUnitState(UNIT_STAT_ALL_STATE);
         i_motionMaster.Clear();
         SetMeleeDamageSchool(SpellSchools(cinfo->dmgschool));
@@ -1754,11 +1757,12 @@ bool Creature::IsVisibleInGridForPlayer(Player* pl) const
     if(pl->isGameMaster())
         return true;
 
+    if (GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_INVISIBLE)
+        return false;
+
     // Live player (or with not release body see live creatures or death creatures with corpse disappearing time > 0
     if(pl->isAlive() || pl->GetDeathTimer() > 0)
     {
-        if(GetCreatureInfo()->flags_extra & CREATURE_FLAG_EXTRA_INVISIBLE)
-            return false;
         return (isAlive() || m_deathTimer > 0 || (m_isDeadByDefault && m_deathState == CORPSE));
     }
 
@@ -1774,12 +1778,24 @@ bool Creature::IsVisibleInGridForPlayer(Player* pl) const
         }
     }
 
-    // Dead player see Spirit Healer or Spirit Guide
-    if(isSpiritService())
+    // Dead player can see ghosts
+    if (GetCreatureInfo()->type_flags & CREATURE_TYPEFLAGS_GHOST_VISIBLE)
         return true;
 
     // and not see any other
     return false;
+}
+
+void Creature::SendAIReaction(AiReaction reactionType)
+{
+    WorldPacket data(SMSG_AI_REACTION, 12);
+
+    data << uint64(GetGUID());
+    data << uint32(reactionType);
+
+    ((WorldObject*)this)->SendMessageToSet(&data, true);
+
+    sLog.outDebug("WORLD: Sent SMSG_AI_REACTION, type %u.", reactionType);
 }
 
 void Creature::CallAssistance()
@@ -1923,7 +1939,7 @@ CreatureDataAddon const* Creature::GetCreatureAddon() const
             return addon;
     }
 
-    // dependent from heroic mode entry
+    // dependent from difficulty mode entry
     return ObjectMgr::GetCreatureTemplateAddon(GetCreatureInfo()->Entry);
 }
 
@@ -2041,7 +2057,7 @@ void Creature::SetInCombatWithZone()
             if (pPlayer->isAlive())
             {
                 pPlayer->SetInCombatWith(this);
-                AddThreat(pPlayer, 0.0f);
+                AddThreat(pPlayer);
             }
         }
     }

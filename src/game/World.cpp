@@ -893,8 +893,6 @@ void World::LoadConfigSettings(bool reload)
     m_configs[CONFIG_SAVE_RESPAWN_TIME_IMMEDIATLY] = sConfig.GetBoolDefault("SaveRespawnTimeImmediately",true);
     m_configs[CONFIG_WEATHER] = sConfig.GetBoolDefault("ActivateWeather",true);
 
-    m_configs[CONFIG_DISABLE_BREATHING] = sConfig.GetIntDefault("DisableWaterBreath", SEC_CONSOLE);
-
     m_configs[CONFIG_ALWAYS_MAX_SKILL_FOR_LEVEL] = sConfig.GetBoolDefault("AlwaysMaxSkillForLevel", false);
 
     if(reload)
@@ -995,6 +993,13 @@ void World::LoadConfigSettings(bool reload)
     m_configs[CONFIG_GUILD_BANK_EVENT_LOG_COUNT] = sConfig.GetIntDefault("Guild.BankEventLogRecordsCount", GUILD_BANK_MAX_LOGS);
     if (m_configs[CONFIG_GUILD_BANK_EVENT_LOG_COUNT] < GUILD_BANK_MAX_LOGS)
         m_configs[CONFIG_GUILD_BANK_EVENT_LOG_COUNT] = GUILD_BANK_MAX_LOGS;
+
+    m_configs[CONFIG_TIMERBAR_FATIGUE_GMLEVEL] = sConfig.GetIntDefault("TimerBar.Fatigue.GMLevel", SEC_CONSOLE);
+    m_configs[CONFIG_TIMERBAR_FATIGUE_MAX]     = sConfig.GetIntDefault("TimerBar.Fatigue.Max", 60);
+    m_configs[CONFIG_TIMERBAR_BREATH_GMLEVEL]  = sConfig.GetIntDefault("TimerBar.Breath.GMLevel", SEC_CONSOLE);
+    m_configs[CONFIG_TIMERBAR_BREATH_MAX]      = sConfig.GetIntDefault("TimerBar.Breath.Max", 180);
+    m_configs[CONFIG_TIMERBAR_FIRE_GMLEVEL]    = sConfig.GetIntDefault("TimerBar.Fire.GMLevel", SEC_CONSOLE);
+    m_configs[CONFIG_TIMERBAR_FIRE_MAX]        = sConfig.GetIntDefault("TimerBar.Fire.Max", 1);
 
     m_VisibleUnitGreyDistance = sConfig.GetFloatDefault("Visibility.Distance.Grey.Unit", 1);
     if(m_VisibleUnitGreyDistance >  MAX_VISIBILITY_DISTANCE)
@@ -1100,6 +1105,9 @@ void World::SetInitialWorldSettings()
 {
     ///- Initialize the random number generator
     srand((unsigned int)time(NULL));
+
+    ///- Time server startup
+    uint32 uStartTime = getMSTime();
 
     ///- Initialize config settings
     LoadConfigSettings();
@@ -1349,7 +1357,7 @@ void World::SetInitialWorldSettings()
     sLog.outString();
     achievementmgr.LoadAchievementReferenceList();
     achievementmgr.LoadAchievementCriteriaList();
-    achievementmgr.LoadAchievementCriteriaData();
+    achievementmgr.LoadAchievementCriteriaRequirements();
     achievementmgr.LoadRewards();
     achievementmgr.LoadRewardLocales();
     achievementmgr.LoadCompletedAchievements();
@@ -1503,6 +1511,9 @@ void World::SetInitialWorldSettings()
     m_timers[WUPDATE_EVENTS].SetInterval(nextGameEvent);    //depend on next event
 
     sLog.outString( "WORLD: World initialized" );
+
+    uint32 uStartInterval = getMSTimeDiff(uStartTime, getMSTime());
+    sLog.outString( "SERVER STARTUP TIME: %i minutes %i seconds", uStartInterval / 60000, (uStartInterval % 60000) / 1000 );
 }
 
 void World::DetectDBCLang()
@@ -1764,7 +1775,7 @@ void World::SendGlobalText(const char* text, WorldSession *self)
     WorldPacket data;
 
     // need copy to prevent corruption by strtok call in LineFromMessage original string
-    char* buf = strdup(text);
+    char* buf = mangos_strdup(text);
     char* pos = buf;
 
     while(char* line = ChatHandler::LineFromMessage(pos))
@@ -1773,7 +1784,7 @@ void World::SendGlobalText(const char* text, WorldSession *self)
         SendGlobalMessage(&data, self);
     }
 
-    free(buf);
+    delete [] buf;
 }
 
 /// Send a packet to all players (or players selected team) in the zone (except self if mentioned)

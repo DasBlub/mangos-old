@@ -379,7 +379,7 @@ int Master::Run()
 
         cliThread->wait();
 
-        #else 
+        #else
 
         cliThread->destroy();
 
@@ -400,8 +400,8 @@ int Master::Run()
 bool Master::_StartDB()
 {
     ///- Get world database info from configuration file
-    std::string dbstring;
-    if(!sConfig.GetString("WorldDatabaseInfo", &dbstring))
+    std::string dbstring = sConfig.GetStringDefault("WorldDatabaseInfo", "");
+    if(dbstring.empty())
     {
         sLog.outError("Database not specified in configuration file");
         return false;
@@ -418,7 +418,8 @@ bool Master::_StartDB()
     if(!WorldDatabase.CheckRequiredField("db_version",REVISION_DB_MANGOS))
         return false;
 
-    if(!sConfig.GetString("CharacterDatabaseInfo", &dbstring))
+    dbstring = sConfig.GetStringDefault("CharacterDatabaseInfo", "");
+    if(dbstring.empty())
     {
         sLog.outError("Character Database not specified in configuration file");
         return false;
@@ -436,7 +437,8 @@ bool Master::_StartDB()
         return false;
 
     ///- Get login database info from configuration file
-    if(!sConfig.GetString("LoginDatabaseInfo", &dbstring))
+    dbstring = sConfig.GetStringDefault("LoginDatabaseInfo", "");
+    if(dbstring.empty())
     {
         sLog.outError("Login database not specified in configuration file");
         return false;
@@ -478,6 +480,7 @@ bool Master::_StartDB()
         sLog.outError("Realm ID not defined in configuration file");
         return false;
     }
+
     sLog.outString("Realm running as realm ID %d", realmID);
 
     ///- Clean the database before starting
@@ -495,9 +498,7 @@ void Master::clearOnlineAccounts()
 {
     // Cleanup online status for characters hosted at current realm
     /// \todo Only accounts with characters logged on *this* realm should have online status reset. Move the online column from 'account' to 'realmcharacters'?
-    loginDatabase.PExecute(
-        "UPDATE account SET online = 0 WHERE online > 0 "
-        "AND id IN (SELECT acctid FROM realmcharacters WHERE realmid = '%d')",realmID);
+    loginDatabase.PExecute("UPDATE account SET active_realm_id = 0 WHERE active_realm_id = '%d'", realmID);
 
     CharacterDatabase.Execute("UPDATE characters SET online = 0 WHERE online<>0");
 

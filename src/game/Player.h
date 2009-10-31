@@ -161,7 +161,7 @@ struct ActionButton
     void SetActionAndType(uint32 action, ActionButtonType type)
     {
         uint32 newData = action | (uint32(type) << 24);
-        if (newData != packedData)
+        if (newData != packedData || uState == ACTIONBUTTON_DELETED)
         {
             packedData = newData;
             if (uState != ACTIONBUTTON_NEW)
@@ -1046,7 +1046,6 @@ class MANGOS_DLL_SPEC Player : public Unit
         void SendInstanceResetWarning(uint32 mapid, Difficulty difficulty, uint32 time);
 
         Creature* GetNPCIfCanInteractWith(uint64 guid, uint32 npcflagmask);
-        bool CanInteractWithNPCs(bool alive = true) const;
         GameObject* GetGameObjectIfCanInteractWith(uint64 guid, GameobjectTypes type) const;
 
         void UpdateVisibilityForPlayer();
@@ -1298,6 +1297,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void CompleteQuest( uint32 quest_id );
         void IncompleteQuest( uint32 quest_id );
         void RewardQuest( Quest const *pQuest, uint32 reward, Object* questGiver, bool announce = true );
+
         void FailQuest( uint32 quest_id );
         bool SatisfyQuestSkillOrClass( Quest const* qInfo, bool msg );
         bool SatisfyQuestLevel( Quest const* qInfo, bool msg );
@@ -1369,6 +1369,7 @@ class MANGOS_DLL_SPEC Player : public Unit
         void SendQuestFailed( uint32 quest_id );
         void SendQuestTimerFailed( uint32 quest_id );
         void SendCanTakeQuestResponse( uint32 msg );
+        void SendQuestConfirmAccept(Quest const* pQuest, Player* pReceiver);
         void SendPushToPartyResponse( Player *pPlayer, uint32 msg );
         void SendQuestUpdateAddItem( Quest const* pQuest, uint32 item_idx, uint32 count );
         void SendQuestUpdateAddCreatureOrGo( Quest const* pQuest, uint64 guid, uint32 creatureOrGO_idx, uint32 old_count, uint32 add_count );
@@ -1416,6 +1417,8 @@ class MANGOS_DLL_SPEC Player : public Unit
 
         bool m_mailsLoaded;
         bool m_mailsUpdated;
+
+        void SendPetTameFailure(PetTameFailureReason reason);
 
         void SetBindPoint(uint64 guid);
         void SendTalentWipeConfirm(uint64 guid);
@@ -1722,12 +1725,6 @@ class MANGOS_DLL_SPEC Player : public Unit
         float OCTRegenMPPerSpirit();
         float GetRatingCoefficient(CombatRating cr) const;
         float GetRatingBonusValue(CombatRating cr) const;
-        uint32 GetMeleeCritDamageReduction(uint32 damage) const;
-        uint32 GetMeleeDamageReduction(uint32 damage) const;
-        uint32 GetRangedCritDamageReduction(uint32 damage) const;
-        uint32 GetRangedDamageReduction(uint32 damage) const;
-        uint32 GetSpellCritDamageReduction(uint32 damage) const;
-        uint32 GetSpellDamageReduction(uint32 damage) const;
         uint32 GetBaseSpellPowerBonus() { return m_baseSpellPower; }
 
         float GetExpertiseDodgeOrParryReduction(WeaponAttackType attType) const;
