@@ -112,6 +112,8 @@ void Guild::CreateDefaultGuildRanks(int locale_idx)
     CreateRank(objmgr.GetMangosString(LANG_GUILD_VETERAN, locale_idx),  GR_RIGHT_GCHATLISTEN | GR_RIGHT_GCHATSPEAK);
     CreateRank(objmgr.GetMangosString(LANG_GUILD_MEMBER, locale_idx),   GR_RIGHT_GCHATLISTEN | GR_RIGHT_GCHATSPEAK);
     CreateRank(objmgr.GetMangosString(LANG_GUILD_INITIATE, locale_idx), GR_RIGHT_GCHATLISTEN | GR_RIGHT_GCHATSPEAK);
+
+    SetBankMoneyPerDay((uint32)GR_GUILDMASTER, WITHDRAW_MONEY_UNLIMITED);
 }
 
 bool Guild::AddMember(uint64 plGuid, uint32 plRank)
@@ -953,14 +955,12 @@ void Guild::LogGuildEvent(uint8 EventType, uint32 PlayerGuid1, uint32 PlayerGuid
 // Bank content related
 void Guild::DisplayGuildBankContent(WorldSession *session, uint8 TabId)
 {
-    WorldPacket data(SMSG_GUILD_BANK_LIST,1200);
-
-    GuildBankTab const* tab = GetBankTab(TabId);
-    if (!tab)
-        return;
+    GuildBankTab const* tab = m_TabListMap[TabId];
 
     if (!IsMemberHaveRights(session->GetPlayer()->GetGUIDLow(),TabId,GUILD_BANK_RIGHT_VIEW_TAB))
         return;
+
+    WorldPacket data(SMSG_GUILD_BANK_LIST,1200);
 
     data << uint64(GetGuildBankMoney());
     data << uint8(TabId);
@@ -994,9 +994,7 @@ void Guild::DisplayGuildBankMoneyUpdate()
 
 void Guild::DisplayGuildBankContentUpdate(uint8 TabId, int32 slot1, int32 slot2)
 {
-    GuildBankTab const* tab = GetBankTab(TabId);
-    if (!tab)
-        return;
+    GuildBankTab const* tab = m_TabListMap[TabId];
 
     WorldPacket data(SMSG_GUILD_BANK_LIST,1200);
 
@@ -1044,9 +1042,7 @@ void Guild::DisplayGuildBankContentUpdate(uint8 TabId, int32 slot1, int32 slot2)
 
 void Guild::DisplayGuildBankContentUpdate(uint8 TabId, GuildItemPosCountVec const& slots)
 {
-    GuildBankTab const* tab = GetBankTab(TabId);
-    if (!tab)
-        return;
+    GuildBankTab const* tab = m_TabListMap[TabId];
 
     WorldPacket data(SMSG_GUILD_BANK_LIST,1200);
 
@@ -1136,14 +1132,6 @@ void Guild::CreateNewBankTab()
 
 void Guild::SetGuildBankTabInfo(uint8 TabId, std::string Name, std::string Icon)
 {
-    if (TabId >= GUILD_BANK_MAX_TABS)
-        return;
-    if (TabId >= m_TabListMap.size())
-        return;
-
-    if (!m_TabListMap[TabId])
-        return;
-
     if (m_TabListMap[TabId]->Name == Name && m_TabListMap[TabId]->Icon == Icon)
         return;
 
@@ -1959,12 +1947,7 @@ void Guild::SetGuildBankTabText(uint8 TabId, std::string text)
 
 void Guild::SendGuildBankTabText(WorldSession *session, uint8 TabId)
 {
-    if (TabId > GUILD_BANK_MAX_TABS)
-        return;
-
-    GuildBankTab const *tab = GetBankTab(TabId);
-    if (!tab)
-        return;
+    GuildBankTab const* tab = m_TabListMap[TabId];
 
     WorldPacket data(MSG_QUERY_GUILD_BANK_TEXT, 1+tab->Text.size()+1);
     data << uint8(TabId);
