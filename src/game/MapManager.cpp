@@ -118,7 +118,7 @@ MapManager::_createBaseMap(uint32 id)
         }
         else
         {
-            m = new Map(id, i_gridCleanUpDelay, 0, 0);
+            m = new Map(id, i_gridCleanUpDelay, 0, REGULAR_DIFFICULTY);
         }
         i_maps[id] = m;
     }
@@ -181,10 +181,10 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player)
         }
 
         //The player has a heroic mode and tries to enter into instance which has no a heroic mode
-        if (!entry->SupportsHeroicMode() && player->GetDifficulty() == DIFFICULTY_HEROIC)
+        if (!entry->SupportsHeroicMode() && player->GetDifficulty() == DUNGEON_DIFFICULTY_HEROIC)
         {
             //Send aborted message
-            player->SendTransferAborted(mapid, TRANSFER_ABORT_DIFFICULTY, DIFFICULTY_HEROIC);
+            player->SendTransferAborted(mapid, TRANSFER_ABORT_DIFFICULTY, DUNGEON_DIFFICULTY_HEROIC);
             return false;
         }
 
@@ -199,7 +199,7 @@ bool MapManager::CanPlayerEnter(uint32 mapid, Player* player)
                     if(instance_map==mapid)
                         break;
 
-                    InstanceTemplate const* instance = objmgr.GetInstanceTemplate(instance_map);
+                    InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(instance_map);
                     instance_map = instance ? instance->parent : 0;
                 }
                 while (instance_map);
@@ -286,7 +286,7 @@ bool MapManager::ExistMapAndVMap(uint32 mapid, float x,float y)
 bool MapManager::IsValidMAP(uint32 mapid)
 {
     MapEntry const* mEntry = sMapStore.LookupEntry(mapid);
-    return mEntry && (!mEntry->IsDungeon() || objmgr.GetInstanceTemplate(mapid));
+    return mEntry && (!mEntry->IsDungeon() || ObjectMgr::GetInstanceTemplate(mapid));
     // TODO: add check for battleground template
 }
 

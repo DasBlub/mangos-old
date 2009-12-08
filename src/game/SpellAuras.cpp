@@ -707,7 +707,7 @@ void AreaAura::Update(uint32 diff)
                 if((*tIter)->HasAura(GetId(), m_effIndex))
                     continue;
 
-                if(SpellEntry const *actualSpellInfo = spellmgr.SelectAuraRankForPlayerLevel(GetSpellProto(), (*tIter)->getLevel()))
+                if(SpellEntry const *actualSpellInfo = sSpellMgr.SelectAuraRankForPlayerLevel(GetSpellProto(), (*tIter)->getLevel()))
                 {
                     int32 actualBasePoints = m_currentBasePoints;
                     // recalculate basepoints for lower rank (all AreaAura spell not use custom basepoints?)
@@ -1191,7 +1191,7 @@ void Aura::ReapplyAffectedPassiveAuras( Unit* target, SpellModifier const& spell
             !itr->second->IsDeleted() && itr->second->GetId() != GetId() &&
             // only applied by self and affected by aura
             itr->second->GetCasterGUID() == target->GetGUID() &&
-            spellmgr.IsAffectedBySpell(itr->second->GetSpellProto(),spellmod.spellId,spellmod.effectId,spellmod.mask))
+            sSpellMgr.IsAffectedBySpell(itr->second->GetSpellProto(),spellmod.spellId,spellmod.effectId,spellmod.mask))
         {
             affectedPassives.insert(itr->second->GetId());
         }
@@ -1239,7 +1239,7 @@ void Aura::HandleAddModifier(bool apply, bool Real)
         mod->effectId = m_effIndex;
         mod->lastAffected = NULL;
 
-        uint64 spellAffectMask = spellmgr.GetSpellAffectMask(GetId(), m_effIndex);
+        uint64 spellAffectMask = sSpellMgr.GetSpellAffectMask(GetId(), m_effIndex);
 
         if (spellAffectMask)
             mod->mask = spellAffectMask;
@@ -1967,8 +1967,6 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
     if(!Real)
         return;
 
-    Unit* caster = GetCaster();
-
     // AT APPLY
     if(apply)
     {
@@ -1976,12 +1974,13 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
         {
             case 1515:                                      // Tame beast
                 // FIX_ME: this is 2.0.12 threat effect replaced in 2.1.x by dummy aura, must be checked for correctness
-                if( caster && m_target->CanHaveThreatList())
-                    m_target->AddThreat(caster, 10.0f, false, GetSpellSchoolMask(GetSpellProto()), GetSpellProto());
+                if (m_target->CanHaveThreatList())
+                    if (Unit* caster = GetCaster())
+                        m_target->AddThreat(caster, 10.0f, false, GetSpellSchoolMask(GetSpellProto()), GetSpellProto());
                 return;
             case 13139:                                     // net-o-matic
                 // root to self part of (root_target->charge->root_self sequence
-                if(caster)
+                if (Unit* caster = GetCaster())
                     caster->CastSpell(caster, 13138, true, NULL, this);
                 return;
             case 39850:                                     // Rocket Blast
@@ -1992,7 +1991,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 m_target->PlayDistanceSound(11965);
                 return;
             case 46354:                                     // Blood Elf Illusion
-                if(caster)
+                if (Unit* caster = GetCaster())
                 {
                     switch(caster->getGender())
                     {
@@ -2014,11 +2013,12 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
         }
 
         // Earth Shield
-        if ( caster && GetSpellProto()->SpellFamilyName == SPELLFAMILY_SHAMAN && (GetSpellProto()->SpellFamilyFlags & UI64LIT(0x40000000000)))
+        if (GetSpellProto()->SpellFamilyName == SPELLFAMILY_SHAMAN && (GetSpellProto()->SpellFamilyFlags & UI64LIT(0x40000000000)))
         {
             // prevent double apply bonuses
             if(m_target->GetTypeId() != TYPEID_PLAYER || !((Player*)m_target)->GetSession()->PlayerLoading())
-                m_modifier.m_amount = caster->SpellHealingBonus(GetSpellProto(), m_modifier.m_amount, SPELL_DIRECT_DAMAGE, m_target);
+                if (Unit* caster = GetCaster())
+                    m_modifier.m_amount = caster->SpellHealingBonus(GetSpellProto(), m_modifier.m_amount, SPELL_DIRECT_DAMAGE, m_target);
             return;
         }
     }
@@ -2036,8 +2036,12 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             return;
         }
 
-        if( (IsQuestTameSpell(GetId())) && caster && caster->isAlive() && m_target->isAlive())
+        if (IsQuestTameSpell(GetId()) && m_target->isAlive())
         {
+            Unit* caster = GetCaster();
+            if (!caster || !caster->isAlive())
+                return;
+
             uint32 finalSpelId = 0;
             switch(GetId())
             {
@@ -2077,7 +2081,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             {
                 if (m_target->GetMap()->IsDungeon())
                 {
-                    uint32 spellId = m_target->GetMap()->IsHeroic() ? 46163 : 44190;
+                    uint32 spellId = m_target->GetMap()->IsRegularDifficulty() ? 44190 : 46163;
 
                     m_target->CastSpell(m_target, spellId, true, NULL, this);
                 }
@@ -2111,14 +2115,15 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 case 24658:
                 {
                     uint32 spellId = 24659;
-                    if (apply && caster)
+                    if (apply)
                     {
-                        const SpellEntry *spell = sSpellStore.LookupEntry(spellId);
-                        if (!spell)
+                        SpellEntry const *spell = sSpellStore.LookupEntry(spellId);
+                        Unit* caster = GetCaster();
+                        if (!spell || !caster)
                             return;
 
                         for (int i=0; i < spell->StackAmount; ++i)
-                            caster->CastSpell(m_target, spell->Id, true, NULL, NULL, GetCasterGUID());
+                            caster->CastSpell(m_target, spellId, true, NULL, NULL, GetCasterGUID());
                         return;
                     }
                     m_target->RemoveAurasDueToSpell(spellId);
@@ -2128,10 +2133,11 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 case 24661:
                 {
                     uint32 spellId = 24662;
-                    if (apply && caster)
+                    if (apply)
                     {
-                        const SpellEntry *spell = sSpellStore.LookupEntry(spellId);
-                        if (!spell)
+                        SpellEntry const* spell = sSpellStore.LookupEntry(spellId);
+                        Unit* caster = GetCaster();
+                        if (!spell || !caster)
                             return;
                         for (int i=0; i < spell->StackAmount; ++i)
                             caster->CastSpell(m_target, spell->Id, true, NULL, NULL, GetCasterGUID());
@@ -2148,6 +2154,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 //Summon Fire Elemental
                 case 40133:
                 {
+                    Unit* caster = GetCaster();
                     if (!caster)
                         return;
 
@@ -2164,6 +2171,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                 //Summon Earth Elemental
                 case 40132 :
                 {
+                    Unit* caster = GetCaster();
                     if (!caster)
                         return;
 
@@ -2192,6 +2200,13 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
                     }
                     return;
                 }
+                case 40131:
+                case 27978:
+                    if (apply)
+                        m_target->m_AuraFlags |= UNIT_AURAFLAG_ALIVE_INVISIBLE;
+                    else
+                        m_target->m_AuraFlags |= ~UNIT_AURAFLAG_ALIVE_INVISIBLE;
+                    return;
             }
             break;
         }
@@ -2212,7 +2227,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
             {
                 if ( apply )
                 {
-                    if ( caster )
+                    if (Unit* caster = GetCaster())
                         // prevent double apply bonuses
                         if(m_target->GetTypeId()!=TYPEID_PLAYER || !((Player*)m_target)->GetSession()->PlayerLoading())
                             m_modifier.m_amount = caster->SpellHealingBonus(GetSpellProto(), m_modifier.m_amount, SPELL_DIRECT_DAMAGE, m_target);
@@ -2330,7 +2345,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
     }
 
     // pet auras
-    if(PetAura const* petSpell = spellmgr.GetPetAura(GetId()))
+    if(PetAura const* petSpell = sSpellMgr.GetPetAura(GetId()))
     {
         if(apply)
             m_target->AddPetAura(petSpell);
@@ -2341,7 +2356,7 @@ void Aura::HandleAuraDummy(bool apply, bool Real)
 
     if(GetEffIndex()==0 && m_target->GetTypeId()==TYPEID_PLAYER)
     {
-        SpellAreaForAreaMapBounds saBounds = spellmgr.GetSpellAreaForAuraMapBounds(GetId());
+        SpellAreaForAreaMapBounds saBounds = sSpellMgr.GetSpellAreaForAuraMapBounds(GetId());
         if(saBounds.first != saBounds.second)
         {
             uint32 zone, area;
@@ -2407,7 +2422,7 @@ void Aura::HandleAuraMounted(bool apply, bool Real)
 
     if(apply)
     {
-        CreatureInfo const* ci = objmgr.GetCreatureTemplate(m_modifier.m_miscvalue);
+        CreatureInfo const* ci = ObjectMgr::GetCreatureTemplate(m_modifier.m_miscvalue);
         if(!ci)
         {
             sLog.outErrorDb("AuraMounted: `creature_template`='%u' not found in database (only need it modelid)", m_modifier.m_miscvalue);
@@ -2418,8 +2433,8 @@ void Aura::HandleAuraMounted(bool apply, bool Real)
         if (m_target->GetTypeId()==TYPEID_PLAYER)
             team = ((Player*)m_target)->GetTeam();
 
-        uint32 display_id = objmgr.ChooseDisplayId(team,ci);
-        CreatureModelInfo const *minfo = objmgr.GetCreatureModelRandomGender(display_id);
+        uint32 display_id = sObjectMgr.ChooseDisplayId(team,ci);
+        CreatureModelInfo const *minfo = sObjectMgr.GetCreatureModelRandomGender(display_id);
         if (minfo)
             display_id = minfo->modelid;
 
@@ -2810,7 +2825,7 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
         }
         else
         {
-            CreatureInfo const * ci = objmgr.GetCreatureTemplate(m_modifier.m_miscvalue);
+            CreatureInfo const * ci = ObjectMgr::GetCreatureTemplate(m_modifier.m_miscvalue);
             if (!ci)
             {
                                                             //pig pink ^_^
@@ -2875,14 +2890,14 @@ void Aura::HandleAuraTransform(bool apply, bool Real)
             if (!m_target->GetAurasByType(SPELL_AURA_MOUNTED).empty())
             {
                 uint32 cr_id = m_target->GetAurasByType(SPELL_AURA_MOUNTED).front()->GetModifier()->m_miscvalue;
-                if (CreatureInfo const* ci = objmgr.GetCreatureTemplate(cr_id))
+                if (CreatureInfo const* ci = ObjectMgr::GetCreatureTemplate(cr_id))
                 {
                     uint32 team = 0;
                     if (m_target->GetTypeId() == TYPEID_PLAYER)
                         team = ((Player*)m_target)->GetTeam();
 
-                    uint32 display_id = objmgr.ChooseDisplayId(team, ci);
-                    CreatureModelInfo const *minfo = objmgr.GetCreatureModelRandomGender(display_id);
+                    uint32 display_id = sObjectMgr.ChooseDisplayId(team, ci);
+                    CreatureModelInfo const *minfo = sObjectMgr.GetCreatureModelRandomGender(display_id);
                     if (minfo)
                         display_id = minfo->modelid;
 
@@ -2904,10 +2919,14 @@ void Aura::HandleForceReaction(bool apply, bool Real)
     Player* player = (Player*)m_target;
 
     uint32 faction_id = m_modifier.m_miscvalue;
-    uint32 faction_rank = m_modifier.m_amount;
+    ReputationRank faction_rank = ReputationRank(m_modifier.m_amount);
 
-    player->GetReputationMgr().ApplyForceReaction(faction_id, ReputationRank(faction_rank), apply);
+    player->GetReputationMgr().ApplyForceReaction(faction_id, faction_rank, apply);
     player->GetReputationMgr().SendForceReactions();
+
+    // stop fighting if at apply forced rank friendly or at remove real rank friendly
+    if (apply && faction_rank >= REP_FRIENDLY || !apply && player->GetReputationRank(faction_id) >= REP_FRIENDLY)
+        player->StopAttackFaction(faction_id);
 }
 
 void Aura::HandleAuraModSkill(bool apply, bool /*Real*/)
@@ -2927,13 +2946,16 @@ void Aura::HandleChannelDeathItem(bool apply, bool Real)
 {
     if(Real && !apply)
     {
-        Unit* caster = GetCaster();
-        Unit* victim = GetTarget();
-        if(!caster || caster->GetTypeId() != TYPEID_PLAYER || !victim || m_removeMode != AURA_REMOVE_BY_DEATH)
+        if(m_removeMode != AURA_REMOVE_BY_DEATH)
             return;
 
         SpellEntry const *spellInfo = GetSpellProto();
         if(spellInfo->EffectItemType[m_effIndex] == 0)
+            return;
+
+        Unit* victim = GetTarget();
+        Unit* caster = GetCaster();
+        if (!caster || caster->GetTypeId() != TYPEID_PLAYER)
             return;
 
         // Soul Shard only from non-grey units
@@ -3138,6 +3160,12 @@ void Aura::HandleModCharm(bool apply, bool Real)
 
     if( apply )
     {
+        if (m_target->GetCharmerGUID())
+        {
+            m_target->RemoveSpellsCausingAura(SPELL_AURA_MOD_CHARM);
+            m_target->RemoveSpellsCausingAura(SPELL_AURA_MOD_POSSESS);
+        }
+
         m_target->SetCharmerGUID(GetCasterGUID());
         m_target->setFaction(caster->getFaction());
         m_target->CastStop(m_target == caster ? GetId() : 0);
@@ -3171,7 +3199,7 @@ void Aura::HandleModCharm(bool apply, bool Real)
                     }
 
                     //just to enable stat window
-                    charmInfo->SetPetNumber(objmgr.GeneratePetNumber(), true);
+                    charmInfo->SetPetNumber(sObjectMgr.GeneratePetNumber(), true);
                     //if charmed two demons the same session, the 2nd gets the 1st one's name
                     m_target->SetUInt32Value(UNIT_FIELD_PET_NAME_TIMESTAMP, time(NULL));
                 }
@@ -3315,7 +3343,7 @@ void Aura::HandleAuraModStun(bool apply, bool Real)
         if(GetId() == 39837)
         {
             GameObject* pObj = new GameObject;
-            if(pObj->Create(objmgr.GenerateLowGuid(HIGHGUID_GAMEOBJECT), 185584, m_target->GetMap(),
+            if(pObj->Create(sObjectMgr.GenerateLowGuid(HIGHGUID_GAMEOBJECT), 185584, m_target->GetMap(),
                 m_target->GetPositionX(), m_target->GetPositionY(), m_target->GetPositionZ(), m_target->GetOrientation(), 0.0f, 0.0f, 0.0f, 0.0f, 100, GO_STATE_READY))
             {
                 pObj->SetRespawnTime(GetAuraDuration()/IN_MILISECONDS);
@@ -5435,7 +5463,7 @@ void Aura::HandleAuraEmpathy(bool apply, bool /*Real*/)
     if(m_target->GetTypeId() != TYPEID_UNIT)
         return;
 
-    CreatureInfo const * ci = objmgr.GetCreatureTemplate(m_target->GetEntry());
+    CreatureInfo const * ci = ObjectMgr::GetCreatureTemplate(m_target->GetEntry());
     if(ci && ci->type == CREATURE_TYPE_BEAST)
         m_target->ApplyModUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_SPECIALINFO, apply);
 }
@@ -5695,9 +5723,6 @@ void Aura::HandleSchoolAbsorb(bool apply, bool Real)
 
 void Aura::PeriodicTick()
 {
-    if (!m_target->isAlive() ^ IsDeathOnlySpell(GetSpellProto()))
-        return;
-
     switch(m_modifier.m_auraname)
     {
         case SPELL_AURA_PERIODIC_DAMAGE:
@@ -5761,8 +5786,8 @@ void Aura::PeriodicTick()
 
                 // Calculate armor mitigation if it is a physical spell
                 // But not for bleed mechanic spells
-                if ( GetSpellSchoolMask(GetSpellProto()) & SPELL_SCHOOL_MASK_NORMAL &&
-                     GetEffectMechanic(GetSpellProto(), m_effIndex) != MECHANIC_BLEED)
+                if (GetSpellSchoolMask(GetSpellProto()) & SPELL_SCHOOL_MASK_NORMAL &&
+                    GetEffectMechanic(GetSpellProto(), m_effIndex) != MECHANIC_BLEED)
                 {
                     uint32 pdamageReductedArmor = pCaster->CalcArmorReducedDamage(m_target, pdamage);
                     cleanDamage.damage += pdamage - pdamageReductedArmor;
@@ -5835,7 +5860,7 @@ void Aura::PeriodicTick()
                 pdamage = pdamageReductedArmor;
             }
 
-            pdamage = pCaster->SpellDamageBonus(m_target,GetSpellProto(),pdamage,DOT);
+            pdamage = pCaster->SpellDamageBonus(m_target, GetSpellProto(), pdamage, DOT);
 
             // talent Soul Siphon add bonus to Drain Life spells
             if( GetSpellProto()->SpellFamilyName == SPELLFAMILY_WARLOCK && (GetSpellProto()->SpellFamilyFlags & 0x8) )
@@ -5868,7 +5893,7 @@ void Aura::PeriodicTick()
                             if (m_spell->SpellFamilyName != SPELLFAMILY_WARLOCK)
                                 continue;
 
-                            SkillLineAbilityMapBounds bounds = spellmgr.GetSkillLineAbilityMapBounds(m_spell->Id);
+                            SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBounds(m_spell->Id);
 
                             for(SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
                             {

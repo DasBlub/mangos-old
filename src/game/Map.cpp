@@ -210,7 +210,7 @@ Map::Map(uint32 id, time_t expiry, uint32 InstanceId, uint8 SpawnMode)
 void Map::InitVisibilityDistance()
 {
     //init visibility for continents
-    m_VisibleDistance = sWorld.GetMaxVisibleDistanceOnContinents();
+    m_VisibleDistance = World::GetMaxVisibleDistanceOnContinents();
 }
 
 // Template specialization of utility methods
@@ -391,7 +391,7 @@ bool Map::EnsureGridLoaded(const Cell &cell)
         loader.LoadN();
 
         // Add resurrectable corpses to world object list in grid
-        ObjectAccessor::Instance().AddCorpsesToGrid(GridPair(cell.GridX(),cell.GridY()),(*grid)(cell.CellX(), cell.CellY()), this);
+        sObjectAccessor.AddCorpsesToGrid(GridPair(cell.GridX(),cell.GridY()),(*grid)(cell.CellX(), cell.CellY()), this);
 
         setGridObjectDataLoaded(true,cell.GridX(), cell.GridY());
         return true;
@@ -1067,6 +1067,22 @@ void Map::UnloadAll(bool pForce)
         ++i;
         UnloadGrid(grid.getX(), grid.getY(), pForce);       // deletes the grid and removes it from the GridRefManager
     }
+}
+
+uint32 Map::GetMaxPlayers() const
+{
+    InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId());
+    if(!iTemplate)
+        return 0;
+    return iTemplate->maxPlayers;
+}
+
+uint32 Map::GetMaxResetDelay() const
+{
+    InstanceTemplate const* iTemplate = ObjectMgr::GetInstanceTemplate(GetId());
+    if(!iTemplate)
+        return 0;
+    return iTemplate->reset_delay;
 }
 
 //*****************************
@@ -1891,7 +1907,7 @@ void Map::SendInitSelf( Player * player )
 void Map::SendInitTransports( Player * player )
 {
     // Hack to send out transports
-    MapManager::TransportMap& tmap = MapManager::Instance().m_TransportsByMap;
+    MapManager::TransportMap& tmap = sMapMgr.m_TransportsByMap;
 
     // no transports at map
     if (tmap.find(player->GetMapId()) == tmap.end())
@@ -1921,7 +1937,7 @@ void Map::SendInitTransports( Player * player )
 void Map::SendRemoveTransports( Player * player )
 {
     // Hack to send out transports
-    MapManager::TransportMap& tmap = MapManager::Instance().m_TransportsByMap;
+    MapManager::TransportMap& tmap = sMapMgr.m_TransportsByMap;
 
     // no transports at map
     if (tmap.find(player->GetMapId()) == tmap.end())
@@ -2143,7 +2159,7 @@ InstanceMap::~InstanceMap()
 void InstanceMap::InitVisibilityDistance()
 {
     //init visibility distance for instances
-    m_VisibleDistance = sWorld.GetMaxVisibleDistanceInInstances();
+    m_VisibleDistance = World::GetMaxVisibleDistanceInInstances();
 }
 
 /*
@@ -2196,11 +2212,11 @@ bool InstanceMap::Add(Player *player)
         if(IsDungeon())
         {
             // get or create an instance save for the map
-            InstanceSave *mapSave = sInstanceSaveManager.GetInstanceSave(GetInstanceId());
+            InstanceSave *mapSave = sInstanceSaveMgr.GetInstanceSave(GetInstanceId());
             if(!mapSave)
             {
                 sLog.outDetail("InstanceMap::Add: creating instance save for map %d spawnmode %d with instance id %d", GetId(), GetSpawnMode(), GetInstanceId());
-                mapSave = sInstanceSaveManager.AddInstanceSave(GetId(), GetInstanceId(), GetSpawnMode(), 0, true);
+                mapSave = sInstanceSaveMgr.AddInstanceSave(GetId(), GetInstanceId(), GetSpawnMode(), 0, true);
             }
 
             // check for existing instance binds
@@ -2310,7 +2326,7 @@ void InstanceMap::CreateInstanceData(bool load)
     if(i_data != NULL)
         return;
 
-    InstanceTemplate const* mInstance = objmgr.GetInstanceTemplate(GetId());
+    InstanceTemplate const* mInstance = ObjectMgr::GetInstanceTemplate(GetId());
     if (mInstance)
     {
         i_script_id = mInstance->script_id;
@@ -2330,7 +2346,7 @@ void InstanceMap::CreateInstanceData(bool load)
             const char* data = fields[0].GetString();
             if(data)
             {
-                sLog.outDebug("Loading instance data for `%s` with id %u", objmgr.GetScriptName(i_script_id), i_InstanceId);
+                sLog.outDebug("Loading instance data for `%s` with id %u", sObjectMgr.GetScriptName(i_script_id), i_InstanceId);
                 i_data->Load(data);
             }
             delete result;
@@ -2338,7 +2354,7 @@ void InstanceMap::CreateInstanceData(bool load)
     }
     else
     {
-        sLog.outDebug("New instance data, \"%s\" ,initialized!", objmgr.GetScriptName(i_script_id));
+        sLog.outDebug("New instance data, \"%s\" ,initialized!", sObjectMgr.GetScriptName(i_script_id));
         i_data->Initialize();
     }
 }
@@ -2389,7 +2405,7 @@ void InstanceMap::PermBindAllPlayers(Player *player)
     if(!IsDungeon())
         return;
 
-    InstanceSave *save = sInstanceSaveManager.GetInstanceSave(GetInstanceId());
+    InstanceSave *save = sInstanceSaveMgr.GetInstanceSave(GetInstanceId());
     if(!save)
     {
         sLog.outError("Cannot bind players, no instance save available for map!");
@@ -2431,7 +2447,7 @@ void InstanceMap::UnloadAll(bool pForce)
     }
 
     if(m_resetAfterUnload == true)
-        objmgr.DeleteRespawnTimeForInstance(GetInstanceId());
+        sObjectMgr.DeleteRespawnTimeForInstance(GetInstanceId());
 
     Map::UnloadAll(pForce);
 }
@@ -2447,26 +2463,18 @@ void InstanceMap::SetResetSchedule(bool on)
     // only for normal instances
     // the reset time is only scheduled when there are no payers inside
     // it is assumed that the reset time will rarely (if ever) change while the reset is scheduled
-    if(IsDungeon() && !HavePlayers() && !IsRaid() && !IsHeroic())
+    if(IsDungeon() && !HavePlayers() && !IsRaidOrHeroicDungeon())
     {
-        InstanceSave *save = sInstanceSaveManager.GetInstanceSave(GetInstanceId());
+        InstanceSave *save = sInstanceSaveMgr.GetInstanceSave(GetInstanceId());
         if(!save) sLog.outError("InstanceMap::SetResetSchedule: cannot turn schedule %s, no save available for instance %d of %d", on ? "on" : "off", GetInstanceId(), GetId());
-        else sInstanceSaveManager.ScheduleReset(on, save->GetResetTime(), InstanceSaveManager::InstResetEvent(0, GetId(), GetInstanceId()));
+        else sInstanceSaveMgr.ScheduleReset(on, save->GetResetTime(), InstanceSaveManager::InstResetEvent(0, GetId(), GetInstanceId()));
     }
-}
-
-uint32 InstanceMap::GetMaxPlayers() const
-{
-    InstanceTemplate const* iTemplate = objmgr.GetInstanceTemplate(GetId());
-    if(!iTemplate)
-        return 0;
-    return iTemplate->maxPlayers;
 }
 
 /* ******* Battleground Instance Maps ******* */
 
 BattleGroundMap::BattleGroundMap(uint32 id, time_t expiry, uint32 InstanceId)
-  : Map(id, expiry, InstanceId, DIFFICULTY_NORMAL)
+  : Map(id, expiry, InstanceId, REGULAR_DIFFICULTY)
 {
     //lets initialize visibility distance for BG/Arenas
     BattleGroundMap::InitVisibilityDistance();
@@ -2479,7 +2487,7 @@ BattleGroundMap::~BattleGroundMap()
 void BattleGroundMap::InitVisibilityDistance()
 {
     //init visibility distance for BG/Arenas
-    m_VisibleDistance = sWorld.GetMaxVisibleDistanceInBGArenas();
+    m_VisibleDistance = World::GetMaxVisibleDistanceInBGArenas();
 }
 
 bool BattleGroundMap::CanEnter(Player * player)

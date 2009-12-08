@@ -26,7 +26,7 @@
 #include "UpdateFields.h"
 #include "SharedDefines.h"
 #include "ThreatManager.h"
-#include "HostilRefManager.h"
+#include "HostileRefManager.h"
 #include "FollowerReference.h"
 #include "FollowerRefManager.h"
 #include "Utilities/EventProcessor.h"
@@ -462,6 +462,12 @@ enum DamageEffectType
     SELF_DAMAGE             = 5
 };
 
+/// internal used flags for marking special auras - for example some dummy-auras
+enum UnitAuraFlags
+{
+    UNIT_AURAFLAG_ALIVE_INVISIBLE   = 0x1,                  // aura which makes unit invisible for alive
+};
+
 enum UnitVisibility
 {
     VISIBILITY_OFF                = 0,                      // absolute, not detectable, GM-like, can see all other
@@ -854,6 +860,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         Unit* getVictim() const { return m_attacking; }
         void CombatStop(bool includingCast = false);
         void CombatStopWithPets(bool includingCast = false);
+        void StopAttackFaction(uint32 faction_id);
         Unit* SelectNearbyTarget(Unit* except = NULL) const;
         bool hasNegativeAuraWithInterruptFlag(uint32 flag);
         void SendMeleeAttackStop(Unit* victim);
@@ -1093,6 +1100,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         Pet* GetPet() const;
         Unit* GetCharmer() const;
         Unit* GetCharm() const;
+        void Uncharm();
         Unit* GetCharmerOrOwner() const { return GetCharmerGUID() ? GetCharmer() : GetOwner(); }
         Unit* GetCharmerOrOwnerOrSelf()
         {
@@ -1121,29 +1129,40 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
 
         bool AddAura(Aura *aur);
 
+        // removing specific aura stack
         void RemoveAura(Aura* aura, AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
         void RemoveAura(AuraMap::iterator &i, AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
         void RemoveAura(uint32 spellId, uint32 effindex, Aura* except = NULL);
-        void RemoveSingleAuraFromStack(uint32 spellId, uint32 effindex);
+
+        // removing specific aura stacks by diff reasons and selections
         void RemoveAurasDueToSpell(uint32 spellId, Aura* except = NULL);
         void RemoveAurasDueToItemSpell(Item* castItem,uint32 spellId);
         void RemoveAurasByCasterSpell(uint32 spellId, uint64 casterGUID);
-        void RemoveAurasDueToSpellByDispel(uint32 spellId, uint64 casterGUID, Unit *dispeler);
+        void RemoveAurasByCasterSpell(uint32 spellId, uint32 effindex, uint64 casterGUID);
         void RemoveAurasDueToSpellBySteal(uint32 spellId, uint64 casterGUID, Unit *stealer);
         void RemoveAurasDueToSpellByCancel(uint32 spellId);
         void RemoveAurasAtChanneledTarget(SpellEntry const* spellInfo);
+
+        // removing unknown aura stacks by diff reasons and selections
         void RemoveNotOwnSingleTargetAuras();
         void RemoveAurasAtMechanicImmunity(uint32 mechMask, uint32 exceptSpellId, bool non_positive = false);
-
         void RemoveSpellsCausingAura(AuraType auraType);
         void RemoveRankAurasDueToSpell(uint32 spellId);
         bool RemoveNoStackAurasDueToAura(Aura *Aur);
         void RemoveAurasWithInterruptFlags(uint32 flags);
         void RemoveAurasWithDispelType( DispelType type );
-
         void RemoveAllAuras(AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
         void RemoveArenaAuras(bool onleave = false);
         void RemoveAllAurasOnDeath();
+
+        // removing specific aura FROM stack
+        void RemoveSingleAuraFromStack(uint32 spellId, uint32 effindex, AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
+
+        // removing specific aura FROM stack by diff reasons and selections
+        void RemoveSingleSpellAurasByCasterSpell(uint32 spellId, uint64 casterGUID, AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
+        void RemoveSingleAuraByCasterSpell(uint32 spellId, uint32 effindex, uint64 casterGUID, AuraRemoveMode mode = AURA_REMOVE_BY_DEFAULT);
+        void RemoveSingleAuraDueToSpellByDispel(uint32 spellId, uint64 casterGUID, Unit *dispeler);
+
         void DelayAura(uint32 spellId, uint32 effindex, int32 delaytime);
 
         float GetResistanceBuffMods(SpellSchools school, bool positive) const { return GetFloatValue(positive ? UNIT_FIELD_RESISTANCEBUFFMODSPOSITIVE+school : UNIT_FIELD_RESISTANCEBUFFMODSNEGATIVE+school ); }
@@ -1247,6 +1266,7 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         bool isVisibleForInState(Player const* u, WorldObject const* viewPoint, bool inVisibleList) const;
         // function for low level grid visibility checks in player/creature cases
         virtual bool IsVisibleInGridForPlayer(Player* pl) const = 0;
+        bool isInvisibleForAlive() const;
 
         AuraList      & GetSingleCastAuras()       { return m_scAuras; }
         AuraList const& GetSingleCastAuras() const { return m_scAuras; }
@@ -1289,6 +1309,8 @@ class MANGOS_DLL_SPEC Unit : public WorldObject
         int32 GetMaxNegativeAuraModifierByMiscValue(AuraType auratype, int32 misc_value) const;
 
         Aura* GetDummyAura(uint32 spell_id) const;
+
+        uint32 m_AuraFlags;
 
         uint32 GetDisplayId() { return GetUInt32Value(UNIT_FIELD_DISPLAYID); }
         void SetDisplayId(uint32 modelId);

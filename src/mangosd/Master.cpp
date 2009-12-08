@@ -298,12 +298,13 @@ int Master::Run()
     uint32 loopCounter = 0;
 
     ///- Start up freeze catcher thread
+    ACE_Based::Thread* freeze_thread = NULL;
     if(uint32 freeze_delay = sConfig.GetIntDefault("MaxCoreStuckTime", 0))
     {
         FreezeDetectorRunnable *fdr = new FreezeDetectorRunnable();
         fdr->SetDelayTime(freeze_delay*1000);
-        ACE_Based::Thread freeze_thread(fdr);
-        freeze_thread.setPriority(ACE_Based::Highest);
+        freeze_thread = new ACE_Based::Thread(fdr);
+        freeze_thread->setPriority(ACE_Based::Highest);
     }
 
     ///- Launch the world listener socket
@@ -319,7 +320,14 @@ int Master::Run()
 
     sWorldSocketMgr->Wait ();
 
-    // set server offline
+    ///- Stop freeze protection before shutdown tasks
+    if (freeze_thread)
+    {
+        freeze_thread->destroy();
+        delete freeze_thread;
+    }
+
+    ///- Set server offline in realmlist
     loginDatabase.PExecute("UPDATE realmlist SET color = 2 WHERE id = '%d'",realmID);
 
     ///- Remove signal handling before leaving
@@ -330,10 +338,10 @@ int Master::Run()
     world_thread.wait();
     rar_thread.wait ();
 
-    ///- Clean database before leaving
+    ///- Clean account database before leaving
     clearOnlineAccounts();
 
-    ///- Wait for delay threads to end
+    ///- Wait for DB delay threads to end
     CharacterDatabase.HaltDelayThread();
     WorldDatabase.HaltDelayThread();
     loginDatabase.HaltDelayThread();
@@ -394,7 +402,7 @@ int Master::Run()
     // fixes a memory leak related to detaching threads from the module
     UnloadScriptingModule();
 
-    // Exit the process with specified return value
+    ///- Exit the process with specified return value
     return World::GetExitCode();
 }
 
@@ -418,12 +426,19 @@ bool Master::_StartDB()
     }
 
     if(!WorldDatabase.CheckRequiredField("db_version",REVISION_DB_MANGOS))
+    {
+        ///- Wait for already started DB delay threads to end
+        WorldDatabase.HaltDelayThread();
         return false;
+    }
 
     dbstring = sConfig.GetStringDefault("CharacterDatabaseInfo", "");
     if(dbstring.empty())
     {
         sLog.outError("Character Database not specified in configuration file");
+
+        ///- Wait for already started DB delay threads to end
+        WorldDatabase.HaltDelayThread();
         return false;
     }
     sLog.outString("Character Database: %s", dbstring.c_str());
@@ -432,17 +447,29 @@ bool Master::_StartDB()
     if(!CharacterDatabase.Initialize(dbstring.c_str()))
     {
         sLog.outError("Cannot connect to Character database %s",dbstring.c_str());
+
+        ///- Wait for already started DB delay threads to end
+        WorldDatabase.HaltDelayThread();
         return false;
     }
 
     if(!CharacterDatabase.CheckRequiredField("character_db_version",REVISION_DB_CHARACTERS))
+    {
+        ///- Wait for already started DB delay threads to end
+        WorldDatabase.HaltDelayThread();
+        CharacterDatabase.HaltDelayThread();
         return false;
+    }
 
     ///- Get login database info from configuration file
     dbstring = sConfig.GetStringDefault("LoginDatabaseInfo", "");
     if(dbstring.empty())
     {
         sLog.outError("Login database not specified in configuration file");
+
+        ///- Wait for already started DB delay threads to end
+        WorldDatabase.HaltDelayThread();
+        CharacterDatabase.HaltDelayThread();
         return false;
     }
 
@@ -451,17 +478,32 @@ bool Master::_StartDB()
     if(!loginDatabase.Initialize(dbstring.c_str()))
     {
         sLog.outError("Cannot connect to login database %s",dbstring.c_str());
+
+        ///- Wait for already started DB delay threads to end
+        WorldDatabase.HaltDelayThread();
+        CharacterDatabase.HaltDelayThread();
         return false;
     }
 
     if(!loginDatabase.CheckRequiredField("realmd_db_version",REVISION_DB_REALMD))
+    {
+        ///- Wait for already started DB delay threads to end
+        WorldDatabase.HaltDelayThread();
+        CharacterDatabase.HaltDelayThread();
+        loginDatabase.HaltDelayThread();
         return false;
+    }
 
     ///- Get the realm Id from the configuration file
     realmID = sConfig.GetIntDefault("RealmID", 0);
     if(!realmID)
     {
         sLog.outError("Realm ID not defined in configuration file");
+
+        ///- Wait for already started DB delay threads to end
+        WorldDatabase.HaltDelayThread();
+        CharacterDatabase.HaltDelayThread();
+        loginDatabase.HaltDelayThread();
         return false;
     }
 

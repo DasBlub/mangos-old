@@ -448,7 +448,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
         void AddToWorld();
         void RemoveFromWorld();
 
-        bool Create (uint32 guidlow, Map *map, uint32 Entry, uint32 team, const CreatureData *data = NULL);
+        bool Create(uint32 guidlow, Map *map, uint32 Entry, uint32 team, const CreatureData *data = NULL);
         bool LoadCreaturesAddon(bool reload = false);
         void SelectLevel(const CreatureInfo *cinfo);
         void LoadEquipment(uint32 equip_entry, bool force=false);
@@ -553,16 +553,9 @@ class MANGOS_DLL_SPEC Creature : public Unit
         std::string GetScriptName() const;
         uint32 GetScriptId() const;
 
-        void prepareGossipMenu( Player *pPlayer, uint32 gossipid = 0 );
-        void sendPreparedGossip( Player* player );
-        void OnGossipSelect(Player* player, uint32 option);
-        void OnPoiSelect(Player* player, GossipOption const *gossip);
-
-        uint32 GetGossipTextId(uint32 action, uint32 zoneid);
-        uint32 GetNpcTextId();
         void LoadGossipOptions();
-        GossipOption const* GetGossipOption( uint32 id ) const;
         void addGossipOption(GossipOption const& gso) { m_goptions.push_back(gso); }
+        GossipOptionList &GetGossipOptionList() { return m_goptions; }
 
         void Say(const char* text, uint32 language, uint64 TargetGuid) { MonsterSay(text,language,TargetGuid); }
         void Yell(const char* text, uint32 language, uint64 TargetGuid) { MonsterYell(text,language,TargetGuid); }
@@ -722,7 +715,7 @@ class MANGOS_DLL_SPEC Creature : public Unit
         float CombatStartZ;
     private:
         GridReference<Creature> m_gridRef;
-        CreatureInfo const* m_creatureInfo;                 // in heroic mode can different from ObjMgr::GetCreatureTemplate(GetEntry())
+        CreatureInfo const* m_creatureInfo;                 // in heroic mode can different from sObjectMgr::GetCreatureTemplate(GetEntry())
         bool m_isActiveObject;
         MonsterMovementFlags m_monsterMoveFlags;
 };

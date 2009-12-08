@@ -16,7 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "HostilRefManager.h"
+#include "HostileRefManager.h"
 #include "ThreatManager.h"
 #include "Unit.h"
 #include "DBCStructure.h"
@@ -103,6 +103,24 @@ void HostileRefManager::deleteReferences()
         HostileReference* nextRef = ref->next();
         ref->removeReference();
         delete ref;
+        ref = nextRef;
+    }
+}
+
+//=================================================
+// delete one reference, defined by faction
+
+void HostileRefManager::deleteReferencesForFaction(uint32 faction)
+{
+    HostileReference* ref = getFirst();
+    while(ref)
+    {
+        HostileReference* nextRef = ref->next();
+        if(ref->getSource()->getOwner()->getFactionTemplateEntry()->faction == faction)
+        {
+            ref->removeReference();
+            delete ref;
+        }
         ref = nextRef;
     }
 }
