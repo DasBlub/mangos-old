@@ -4205,6 +4205,24 @@ void Player::DeleteFromDB(uint64 playerguid, uint32 accountId, bool updateRealmC
     if(updateRealmChars) sWorld.UpdateRealmCharCount(accountId);
 }
 
+/**
+ * Searches the account ID from a character by his GUID in the database
+ *
+ * @param  guid the GUID from the character
+ * @return the account ID. If the character has not been found, it returns 0
+ */
+uint32 Player::GetAccountIdByGUID(uint64 guid)
+{
+    QueryResult* result = CharacterDatabase.PQuery("SELECT account FROM characters WHERE guid = %u", GUID_LOPART(guid));
+    if (result)
+    {
+        Field* fields = result->Fetch();
+        return fields[0].GetUInt32();
+    }
+
+    return 0;
+}
+
 void Player::SetMovement(PlayerMovementType pType)
 {
     WorldPacket data;
