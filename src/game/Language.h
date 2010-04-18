@@ -781,7 +781,14 @@ enum MangosStrings
     LANG_ACCOUNT_LIST_LINE              = 1013,
     LANG_ACCOUNT_LIST_EMPTY             = 1014,
     LANG_QUIT_WRONG_USE_ERROR           = 1015,
-    // Room for more level 4              1016-1099 not used
+    LANG_CHARACTER_DELETED_LIST_HEADER  = 1016,
+    LANG_CHARACTER_DELETED_LIST_LINE    = 1017,
+    LANG_CHARACTER_DELETED_LIST_BAR     = 1018,
+    LANG_CHARACTER_DELETED_LIST_EMPTY   = 1019,
+    LANG_CHARACTER_DELETED_RESTORE      = 1020,
+    LANG_CHARACTER_DELETED_DELETE       = 1021,
+    LANG_CHARACTER_DELETED_ERR_RENAME   = 1022,
+    // Room for more level 4              1023-1099 not used
 
     // Level 3 (continue)
     LANG_ACCOUNT_SETADDON               = 1100,

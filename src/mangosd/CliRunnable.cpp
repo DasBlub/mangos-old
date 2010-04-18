@@ -114,6 +114,154 @@ bool ChatHandler::HandleAccountDeleteCommand(const char* args)
     return true;
 }
 
+/**
+ * Handles the '.character deleted list' command, which shows all deleted characters which matches the given search string
+ *
+ * @see Player::GetDeletedCharacterGUIDs
+ * @see ChatHandler::HandleCharacterDeletedRestoreCommand
+ * @see ChatHandler::HandleCharacterDeletedDeleteCommand
+ *
+ * @param args the search string which either contains a player GUID or a part fo the character-name
+ */
+bool ChatHandler::HandleCharacterDeletedListCommand(const char* args)
+{
+    std::list<uint32> foundGUIDs;
+    if(!Player::GetDeletedCharacterGUIDs(foundGUIDs, args))
+        return false;
+
+    if(foundGUIDs.empty()) // if no characters have been found, output a warning
+    {
+        SendSysMessage(LANG_CHARACTER_DELETED_LIST_EMPTY);
+        return false;
+    }
+
+    // add all GUIDs to a comma separated list for the SQL select
+    std::stringstream ss;
+    for(std::list<uint32>::iterator itr = foundGUIDs.begin(); itr != foundGUIDs.end(); ++itr)
+        ss << *itr << ",";
+    ss << "-1"; // add "-1" because we have a "," at the end. "-1" can never be a correct value because the field is unsigned, thus we cannot select some wrong character
+
+    QueryResult* resultChar = CharacterDatabase.PQuery("SELECT guid, deleteInfos_Name, deleteInfos_Account, deleteDate FROM characters WHERE deleteDate IS NOT NULL AND guid IN (%s)", ss.str().c_str());
+
+    if(resultChar)
+    {
+        SendSysMessage(LANG_CHARACTER_DELETED_LIST_BAR);
+        SendSysMessage(LANG_CHARACTER_DELETED_LIST_HEADER);
+        SendSysMessage(LANG_CHARACTER_DELETED_LIST_BAR);
+        do
+        {
+            Field* fields = resultChar->Fetch();
+
+            uint32      guid       = fields[0].GetUInt32();
+            std::string name       = fields[1].GetCppString();
+            uint32      accountId  = fields[2].GetUInt32();
+            time_t      deleteDate = time_t(fields[3].GetUInt64());
+
+            // format the date
+            struct tm*  deleteDateInfo = localtime(&deleteDate);
+            char        deleteDate_txt[20];
+
+            strftime(deleteDate_txt, 20, "%Y-%m-%d %H:%M:%S", deleteDateInfo);
+
+
+            std::string accountName;
+            sAccountMgr.GetName (accountId, accountName);
+
+            PSendSysMessage(LANG_CHARACTER_DELETED_LIST_LINE, guid, name.c_str(), accountName.c_str(), accountId, deleteDate_txt);
+        } while (resultChar->NextRow());
+        SendSysMessage(LANG_CHARACTER_DELETED_LIST_BAR);
+    } else { // if no characters have been found, output a warning
+        SendSysMessage(LANG_CHARACTER_DELETED_LIST_EMPTY);
+    }
+
+    return true;
+}
+
+/**
+ * Handles the '.character deleted restore' command, which restores all deleted characters which matches the given search string
+ *
+ * The command automatically calls '.character deleted list' command with the search string to show all restored characters.
+ *
+ * @see Player::GetDeletedCharacterGUIDs
+ * @see ChatHandler::HandleCharacterDeletedListCommand
+ * @see ChatHandler::HandleCharacterDeletedDeleteCommand
+ *
+ * @param args the search string which either contains a player GUID or a part fo the character-name
+ */
+bool ChatHandler::HandleCharacterDeletedRestoreCommand(const char* args)
+{
+    if(!*args) // It is required to submit at least one argument
+        return false;
+
+    std::string searchString;
+    std::string newCharName;
+
+    std::stringstream(args) >> searchString >> newCharName;
+
+    std::list<uint32> foundGUIDs;
+    if(!Player::GetDeletedCharacterGUIDs(foundGUIDs, searchString))
+        return false;
+
+    if(foundGUIDs.empty())
+    {
+        SendSysMessage(LANG_CHARACTER_DELETED_LIST_EMPTY);
+        return false;
+    }
+
+    // add all GUIDs to a comma separated list for the SQL select
+    std::stringstream ss;
+    for(std::list<uint32>::iterator itr = foundGUIDs.begin(); itr != foundGUIDs.end(); ++itr)
+        ss << *itr << ",";
+    ss << "-1"; // add "-1" because we have a "," at the end. "-1" can never be a correct value because the field is unsigned
+
+    SendSysMessage(LANG_CHARACTER_DELETED_RESTORE);
+    HandleCharacterDeletedListCommand(searchString.c_str());
+
+    if (!newCharName.size())
+        CharacterDatabase.PQuery("UPDATE characters SET name=deleteInfos_Name, account=deleteInfos_Account, deleteDate=NULL, deleteInfos_Name=NULL, deleteInfos_Account=NULL WHERE deleteDate IS NOT NULL AND guid IN (%s)", ss.str().c_str());
+    else if (foundGUIDs.size() == 1 && normalizePlayerName(newCharName))
+        CharacterDatabase.PQuery("UPDATE characters SET name='%s', account=deleteInfos_Account, deleteDate=NULL, deleteInfos_Name=NULL, deleteInfos_Account=NULL WHERE deleteDate IS NOT NULL AND guid IN (%s)", newCharName.c_str(), ss.str().c_str());
+    else
+        SendSysMessage(LANG_CHARACTER_DELETED_ERR_RENAME);
+
+    return true;
+}
+
+/**
+ * Handles the '.character deleted delete' command, which completely deletes all deleted characters which matches the given search string
+ *
+ * @see Player::GetDeletedCharacterGUIDs
+ * @see Player::DeleteFromDB
+ * @see ChatHandler::HandleCharacterDeletedListCommand
+ * @see ChatHandler::HandleCharacterDeletedRestoreCommand
+ *
+ * @param args the search string which either contains a player GUID or a part fo the character-name
+ */
+bool ChatHandler::HandleCharacterDeletedDeleteCommand(const char* args)
+{
+    if(!*args) // It is required to submit at least one argument
+        return false;
+
+    std::list<uint32> foundGUIDs;
+    if(!Player::GetDeletedCharacterGUIDs(foundGUIDs, args))
+        return false;
+
+    if(foundGUIDs.empty())
+    {
+        SendSysMessage(LANG_CHARACTER_DELETED_LIST_EMPTY);
+        return false;
+    }
+
+    SendSysMessage(LANG_CHARACTER_DELETED_DELETE);
+    HandleCharacterDeletedListCommand(args);
+
+    // Call the appropiate function to delete them
+    for(std::list<uint32>::iterator itr = foundGUIDs.begin(); itr != foundGUIDs.end(); ++itr)
+        Player::DeleteFromDB(*itr, Player::GetAccountIdByGUID(*itr), true, true);
+
+    return true;
+}
+
 bool ChatHandler::HandleCharacterDeleteCommand(const char* args)
 {
     if(!*args)
