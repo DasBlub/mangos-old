@@ -59,6 +59,7 @@
 #include "Spell.h"
 #include "SocialMgr.h"
 #include "Mail.h"
+#include "EventSystemMgr.h"
 
 #include <cmath>
 
@@ -1482,6 +1483,10 @@ void Player::setDeathState(DeathState s)
         // restore default warrior stance
         if(getClass()== CLASS_WARRIOR)
             CastSpell(this,SPELL_ID_PASSIVE_BATTLE_STANCE,true);
+    }
+
+    if (s == JUST_DIED) {
+        sEventSystemMgr.TriggerEvent(EVENT_PLAYER_DIED, 0, 0, this);
     }
 }
 
@@ -4263,6 +4268,8 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     m_camera.UpdateVisibilityForOwner();
     // update visibility of player for nearby cameras
     UpdateObjectVisibility();
+
+    sEventSystemMgr.TriggerEvent(EVENT_PLAYER_REVIVED, 0, 0, this);
 
     if(!applySickness)
         return;

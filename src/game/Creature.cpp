@@ -43,6 +43,7 @@
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
+#include "EventSystemMgr.h"
 
 // apply implementation of the singletons
 #include "Policies/SingletonImp.h"
@@ -1363,6 +1364,15 @@ float Creature::GetAttackDistance(Unit const* pl) const
 
 void Creature::setDeathState(DeathState s)
 {
+    if (s == JUST_DIED) {
+        sEventSystemMgr.TriggerEvent(EVENT_CREATURE_DIED, 0, 0, this);
+        if (GetCreatureInfo()->rank == 3) { // Creature is a World Boss
+            sEventSystemMgr.TriggerEvent(EVENT_BOSS_KILLED, 0, 0, this);
+        }
+    } else if (s == JUST_ALIVED) {
+        sEventSystemMgr.TriggerEvent(EVENT_CREATURE_SPAWNED, 0, 0, this);
+    }
+
     if ((s == JUST_DIED && !m_isDeadByDefault) || (s == JUST_ALIVED && m_isDeadByDefault))
     {
         m_deathTimer = m_corpseDelay*IN_MILLISECONDS;
