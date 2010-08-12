@@ -15,111 +15,84 @@
 #include "Utilities/UnorderedSet.h"
 #include "Timer.h"
 
-// Don't forget to keep the naming function in sync!
-enum EventType
-{
-    EVENT_COMMAND_USED,
-    EVENT_COMMAND_GM_USED,
-
-    EVENT_CHARACTER_CREATED,
-    EVENT_CHARACTER_RENAMED,
-    EVENT_CHARACTER_DELETED,
-    EVENT_CHARACTER_DELETED_FINALLY,
-
-    EVENT_CREATURE_SPAWNED,
-    EVENT_CREATURE_DIED,
-
-    EVENT_BOSS_AGGRO,
-    EVENT_BOSS_EVADED,
-    EVENT_BOSS_DIED,
-
-    EVENT_GAMEEVENT_STARTED,
-    EVENT_GAMEEVENT_STOPPED,
-
-    EVENT_BATTLEGROUND_STARTED, // TODO: test
-    EVENT_BATTLEGROUND_ENDED, // TODO: test
-
-    EVENT_PLAYER_LOGIN,
-    EVENT_PLAYER_LOGOUT,
-
-    EVENT_PLAYER_LEVEL_REACHED,
-//    EVENT_PLAYER_SKILL_LEVEL_REACHED,
-    EVENT_PLAYER_REPUTATION_LEVEL_REACHED,
-//    EVENT_PLAYER_PERSONAL_ARENA_RATING_GAINED,
-    EVENT_PLAYER_TALENT_RESET,
-
-//    EVENT_PLAYER_SPELL_CAST,
-    EVENT_PLAYER_SPELL_LEARNED, // TODO: support
-    EVENT_PLAYER_DAMAGE_DEALT, // TODO: support
-
-    EVENT_PLAYER_TELEPORTED, // TODO: support
-//    EVENT_PLAYER_FLIGHT_PATH_TAKEN,
-    EVENT_PLAYER_INSTANCE_ENTERED, // TODO: support
-    EVENT_PLAYER_INSTANCE_LEAVED, // TODO: support
-    EVENT_PLAYER_INSTANCE_ID_RECEIVED, // TODO: support
-
-    EVENT_PLAYER_REVIVED, // TODO: support
-    EVENT_PLAYER_DIED, // TODO: support
-    EVENT_PLAYER_KILLED_BY_PLAYER, // TODO: support
-    EVENT_PLAYER_KILLED_BY_CREATURE, // TODO: support
-    EVENT_PLAYER_KILLED_OTHER_PLAYER, // TODO: support
-    EVENT_PLAYER_KILLED_OTHER_CREATURE, // TODO: support
-
-    EVENT_PLAYER_ITEM_USED, // TODO: support
-    EVENT_PLAYER_ITEM_EQUIPED, // TODO: support
-    EVENT_PLAYER_ITEM_RECEIVED, // TODO: support
-    EVENT_PLAYER_ITEM_COLORED_RECEIVED, // TODO: support
-
-    EVENT_PLAYER_QUEST_COMPLETED, // TODO: support
-    EVENT_PLAYER_QUEST_ABANDONED, // TODO: support
-    EVENT_PLAYER_QUEST_ITEM_COLLECTED, // TODO: support
-
-    EVENT_PLAYER_BATTLEGROUND_JOINED, // TODO: support
-    EVENT_PLAYER_BATTLEGROUND_LEAVED, // TODO: support
-    EVENT_PLAYER_BATTLEGROUND_WON, // TODO: support
-    EVENT_PLAYER_BATTLEGROUND_LOST, // TODO: support
-    EVENT_PLAYER_DUELL_WON, // TODO: support
-    EVENT_PLAYER_DUELL_LOST, // TODO: support
-    EVENT_PLAYER_ARENA_TEAM_JOINED, // TODO: support
-    EVENT_PLAYER_ARENA_TEAM_LEAVED, // TODO: support
-
-//    EVENT_PLAYER_GAMEOBJECT_USED,
-    EVENT_PLAYER_MAIL_SEND, // TODO: support
-    EVENT_PLAYER_TRADE_ACCEPTED, // TODO: support
-    EVENT_PLAYER_TRADE_SPECIAL_ACCEPTED, // TODO: support
-    EVENT_PLAYER_MERCHANT_TRADED, // TODO: support
-
-    EVENT_PLAYER_MONEY_GAINED, // TODO: support
-    EVENT_PLAYER_MONEY_LOOTED, // TODO: support
-
-    EVENT_LOOT_ITEM_EPIC_DROPPED, // TODO: support
-
-    EVENT_RAID_CREATED, // TODO: support
-    EVENT_RAID_DISBANDED, // TODO: support
-
-    EVENT_ARENA_TEAM_CREATED, // TODO: test
-    EVENT_ARENA_TEAM_DISBANDED, // TODO: test
-    EVENT_ARENA_TEAM_RATING_GAINED, // TODO: test
-
-//    EVENT_AUCTION_CREATED,
-    // =============
-    EVENT_MARKER_END
-};
-
 class Player;
 class Creature;
 class ChatCommand;
 class GameEventData;
 class BattleGround;
 class ArenaTeam;
+class Item;
+class ItemPosCountVec;
 
 struct EventInfo
 {
-    EventType type;
     uint32 time;
 
-    EventInfo(EventType type_, uint32 time_ = getMSTime())
-    : type(type_), time(time_) {}
+    EventInfo() : time(getMSTime()) {}
+};
+
+template <typename U>
+struct EventInfoUnit : public EventInfo
+{
+    const U &subject;
+
+    EventInfoUnit(const U &subject_)
+    : EventInfo(), subject(subject_) {}
+};
+typedef EventInfoUnit<Creature> EventInfoCreature;
+typedef EventInfoUnit<Player> EventInfoPlayer;
+typedef EventInfoUnit<ArenaTeam> EventInfoArenaTeam;
+
+struct EventInfoArenaTeamStatus : public EventInfoArenaTeam
+{
+    const Player *originator;
+
+    EventInfoArenaTeamStatus(const ArenaTeam &team_, const Player *originator_)
+    : EventInfoArenaTeam(team_), originator(originator_) {}
+};
+
+struct EventInfoArenaTeamRating : public EventInfoArenaTeam
+{
+    uint32 amount;
+
+    EventInfoArenaTeamRating(const ArenaTeam &team_, uint32 amount_)
+    : EventInfoArenaTeam(team_), amount(amount_) {}
+};
+
+struct EventInfoBattleGround : public EventInfo
+{
+    const BattleGround &battleGround;
+    const ArenaTeam *alliance, *horde;
+
+    EventInfoBattleGround(const BattleGround &battleGround_, const ArenaTeam *alliance_, const ArenaTeam *horde_)
+    : EventInfo(), battleGround(battleGround_), alliance(alliance_), horde(horde_) {}
+};
+
+struct EventInfoBattleGroundEnded : public EventInfoBattleGround
+{
+    uint32 winnerFaction;
+
+    EventInfoBattleGroundEnded(const BattleGround &battleGround_, uint32 winnerFaction_,
+                               const ArenaTeam *alliance_, const ArenaTeam *horde_)
+    : EventInfoBattleGround(battleGround_, alliance_, horde_), winnerFaction(winnerFaction_) {}
+};
+
+struct EventInfoCharacter : public EventInfo
+{
+    const std::string &name;
+    uint32 accountId;
+    const std::string &ip;
+
+    EventInfoCharacter(const std::string &name_, uint32 accountId_, const std::string &ip_)
+    : EventInfo(), name(name_), accountId(accountId_), ip(ip_) {}
+};
+
+struct EventInfoCharacterRenamed : public EventInfoCharacter
+{
+    const std::string &oldname;
+
+    EventInfoCharacterRenamed(const std::string &name_, const std::string &oldname_, uint32 accountId_, const std::string &ip_)
+    : EventInfoCharacter(name_, accountId_, ip_), oldname(oldname_) {}
 };
 
 struct EventInfoCommand : public EventInfo
@@ -128,30 +101,8 @@ struct EventInfoCommand : public EventInfo
     uint32 accountId;
     const Player *player;
 
-    EventInfoCommand(EventType type_, const ChatCommand &command_, uint32 accountId_, const Player *player_, uint32 time_)
-    : EventInfo(type_, time_), command(command_), accountId(accountId_), player(player_) {}
-};
-
-template <typename U>
-struct EventInfoUnit : public EventInfo
-{
-    const U &unit;
-
-    EventInfoUnit(EventType type_, const U &unit_, uint32 time_ = getMSTime())
-    : EventInfo(type_, time_), unit(unit_) {}
-};
-typedef EventInfoUnit<Creature> EventInfoCreature;
-typedef EventInfoUnit<Player> EventInfoPlayer;
-
-struct EventInfoCharacter : public EventInfo
-{
-    const std::string &name, &oldname;
-    uint32 accountId;
-    const std::string &ip;
-
-    EventInfoCharacter(EventType type_, const std::string &name_, uint32 accountId_, const std::string &ip_,
-                   const std::string &oldname_, uint32 time_)
-    : EventInfo(type_, time_), name(name_), oldname(oldname_), accountId(accountId_), ip(ip_) {}
+    EventInfoCommand(const ChatCommand &command_, uint32 accountId_, const Player *player_)
+    : EventInfo(), command(command_), accountId(accountId_), player(player_) {}
 };
 
 struct EventInfoGameEvent : public EventInfo
@@ -159,54 +110,68 @@ struct EventInfoGameEvent : public EventInfo
     uint16 id;
     const GameEventData &gameEvent;
 
-    EventInfoGameEvent(EventType type_, uint16 id_, const GameEventData &gameEvent_, uint32 time_)
-    : EventInfo(type_, time_), id(id_), gameEvent(gameEvent_) {}
-};
-
-struct EventInfoBattleGround : public EventInfo
-{
-    const BattleGround &battleGround;
-    uint32 winnerFaction;
-    const ArenaTeam *alliance, *horde;
-
-    EventInfoBattleGround(EventType type_, const BattleGround &battleGround_, uint32 winnerFaction_,
-                      const ArenaTeam *alliance_, const ArenaTeam *horde_, uint32 time_)
-    : EventInfo(type_, time_), battleGround(battleGround_), winnerFaction(winnerFaction_),
-      alliance(alliance_), horde(horde_) {}
+    EventInfoGameEvent(uint16 id_, const GameEventData &gameEvent_)
+    : EventInfo(), id(id_), gameEvent(gameEvent_) {}
 };
 
 struct EventInfoPlayerLevel : public EventInfoPlayer
 {
     uint32 level, increase;
 
-    EventInfoPlayerLevel(EventType type_, const Player &player_, uint32 level_, uint32 increase_, uint32 time_)
-    : EventInfoPlayer(type_, player_, time_), level(level_), increase(increase_) {}
+    EventInfoPlayerLevel(const Player &player_, uint32 level_, uint32 increase_)
+    : EventInfoPlayer(player_), level(level_), increase(increase_) {}
 };
 
-struct EventInfoArenaTeam : public EventInfo
+struct EventInfoPlayerItem : public EventInfoPlayer
 {
-    const ArenaTeam &team;
-    const Player *player;
-    uint32 increase;
+    const Item &item;
+    const ItemPosCountVec &position;
 
-    EventInfoArenaTeam(EventType type_, const ArenaTeam &team_, const Player *player_, uint32 increase_, uint32 time_)
-    : EventInfo(type_, time_), team(team_), player(player_), increase(increase_) {}
-};
+    EventInfoPlayerItem(const Player &player_, const Item &item_, const ItemPosCountVec &position_)
+    : EventInfoPlayer(player_), item(item_), position(position_) {}
+}
 
 class Listener {};
 
-class ListenerCommand : public Listener {
+class ListenerArenaTeam : public Listener
+{
 public:
-    virtual void EventCommandUsed(const EventInfoCommand &) {}
-    virtual void EventCommandGMUsed(const EventInfoCommand &) {}
+    virtual void EventArenaTeamCreated(const EventInfoArenaTeamStatus &) {}
+    virtual void EventArenaTeamDisbanded(const EventInfoArenaTeamStatus &) {}
+    virtual void EventArenaTeamRatingGained(const EventInfoArenaTeamRating &) {}
+};
+
+class ListenerBattleGround : public Listener
+{
+public:
+    virtual void EventBattleGroundStarted(const EventInfoBattleGround &) {}
+    virtual void EventBattleGroundEnded(const EventInfoBattleGroundEnded &) {}
 };
 
 class ListenerBoss : public Listener
 {
 public:
-    virtual void EventBossAggro(const EventInfoCreature &) {}
+    virtual void EventBossAggroed(const EventInfoCreature &) {}
     virtual void EventBossDied(const EventInfoCreature &) {}
     virtual void EventBossEvaded(const EventInfoCreature &) {}
+};
+
+class ListenerCharacter : public Listener
+{
+public:
+    virtual void EventCharacterLogin(const EventInfoCharacter &) {}
+    virtual void EventCharacterLogout(const EventInfoCharacter &) {}
+    virtual void EventCharacterCreated(const EventInfoCharacter &) {}
+    virtual void EventCharacterRenamed(const EventInfoCharacterRenamed &) {}
+    virtual void EventCharacterDeleted(const EventInfoCharacter &) {}
+    virtual void EventCharacterDeletedFinally(const EventInfoCharacter &) {}
+};
+
+class ListenerCommand : public Listener
+{
+public:
+    virtual void EventCommandUsed(const EventInfoCommand &) {}
+    virtual void EventCommandGMUsed(const EventInfoCommand &) {}
 };
 
 class ListenerCreature : public Listener
@@ -216,61 +181,45 @@ public:
     virtual void EventCreatureDied(const EventInfoCreature &) {}
 };
 
-class ListenerCharacter : public Listener {
-public:
-    virtual void EventCharacterCreated(const EventInfoCharacter &) {}
-    virtual void EventCharacterRenamed(const EventInfoCharacter &) {}
-    virtual void EventCharacterDeleted(const EventInfoCharacter &) {}
-    virtual void EventCharacterDeletedFinally(const EventInfoCharacter &) {}
-};
-
-class ListenerPlayerLoginout : public Listener {
-public:
-    virtual void EventPlayerLogin(const EventInfoCharacter &) {}
-    virtual void EventPlayerLogout(const EventInfoCharacter &) {}
-};
-
-class ListenerGameEvent : public Listener {
+class ListenerGameEvent : public Listener
+{
 public:
     virtual void EventGameEventStarted(const EventInfoGameEvent &) {}
     virtual void EventGameEventStopped(const EventInfoGameEvent &) {}
 };
 
-class ListenerBattleGround : public Listener {
-public:
-    virtual void EventBattleGroundStarted(const EventInfoBattleGround &) {}
-    virtual void EventBattleGroundEnded(const EventInfoBattleGround &) {}
-};
-
-class ListenerPlayerLevel : public Listener {
+class ListenerPlayerLevel : public Listener
+{
 public:
     virtual void EventPlayerLevelReached(const EventInfoPlayerLevel &) {}
 //    virtual void EventPlayerSkillLevelReached(const EventInfoPlayerLevel &) {}
     virtual void EventPlayerReputationLevelReached(const EventInfoPlayerLevel &) {}
 //    virtual void EventPlayerPersonalArenaRatingGained(const EventInfoPlayerLevel &) {}
-    virtual void EventPlayerTalentReset(const EventInfoPlayerLevel &) {}
+    virtual void EventPlayerTalentsReseted(const EventInfoPlayer &) {}
 };
 
-class ListenerArenaTeam : public Listener {
+class ListenerPlayerItem : public Listener
+{
 public:
-    virtual void EventArenaTeamCreated(const EventInfoArenaTeam &) {}
-    virtual void EventArenaTeamDisbanded(const EventInfoArenaTeam &) {}
-    virtual void EventArenaTeamRatingGained(const EventInfoArenaTeam &) {}
-};
+    virtual void EventPlayerItemUsed(const EventInfoPlayerItem &) {}
+    virtual void EventPlayerItemEquipped(const EventInfoPlayerItem &) {}
+    virtual void EventPlayerItemReceived(const EventInfoPlayerItem &) {}
+    virtual void EventPlayerItemColoredReceived(const EventInfoPlayerItem &) {}
+}
 
 template<typename L>
 struct ListenerSet {
     typedef UNORDERED_SET<L *> Type;
 };
 
-template<typename L, typename S>
+template<typename L>
 struct EventConnect
 {
 public:
     inline EventConnect& operator+=(L *listener)
     {
         RegisterListener(listener);
-        return this;
+        return *this;
     }
 
     inline void RegisterListener(L *listener)
@@ -278,6 +227,7 @@ public:
         list.insert(listener);
     }
 
+    template<typename S>
     void InformListener(const S &event, void (L::*func)(const S&))
     {
         for (typename ListenerSet<L>::Type::const_iterator it = list.begin(); it != list.end(); ++it)
@@ -295,36 +245,112 @@ public:
     EventSystemMgr();
     virtual ~EventSystemMgr();
 
-    void TriggerCommandEvent(EventType type, const ChatCommand &command, uint32 accountId,
-                             const Player *player = NULL, uint32 time = getMSTime());
-    void TriggerBossEvent(EventType type, const Creature &boss, uint32 time = getMSTime());
-    void TriggerCreatureEvent(EventType type, const Creature &creature, uint32 time = getMSTime());
-    void TriggerCharacterEvent(EventType type, const std::string &name, uint32 accountId, const std::string &ip,
-                               const std::string &oldname = "", uint32 time = getMSTime());
-    void TriggerPlayerLoginoutEvent(EventType type, const std::string &name, uint32 accountId,
-                                    const std::string &ip, uint32 time = getMSTime());
-    void TriggerGameEventEvent(EventType type, uint16 id, const GameEventData &gameEvent, uint32 time = getMSTime());
-    void TriggerBattleGroundEvent(EventType type, const BattleGround &battleGround, uint32 winnerFaction = 0,
-                                  const ArenaTeam *alliance = NULL, const ArenaTeam *horde = NULL, uint32 time = getMSTime());
-    void TriggerPlayerLevelEvent(EventType type, const Player &player, uint32 level = 0,
-                                 uint32 increase = 0, uint32 time = getMSTime());
-    void TriggerArenaTeamEvent(EventType type, const ArenaTeam &team, const Player *player = NULL,
-                               uint32 increase = 0, uint32 time = getMSTime());
+    void TriggerArenaTeamCreated(const ArenaTeam &team, const Player *originator); // TODO: test
+    void TriggerArenaTeamDisbanded(const ArenaTeam &team, const Player *originator); // TODO: test
+    void TriggerArenaTeamRatingGained(const ArenaTeam &team, uint32 amount); // TODO: test
+
+//    void TriggerAuctionCreated(); // TODO: support
+
+    void TriggerBattleGroundStarted(const BattleGround &battleGround, const ArenaTeam *alliance = NULL,
+                                    const ArenaTeam *horde = NULL); // TODO: test
+    void TriggerBattleGroundEnded(const BattleGround &battleGround, uint32 winnerFaction,
+                                  const ArenaTeam *alliance = NULL, const ArenaTeam *horde = NULL); // TODO: test
+
+    void TriggerBossAggroed(const Creature &boss);
+    void TriggerBossEvaded(const Creature &boss);
+    void TriggerBossDied(const Creature &boss);
+
+    void TriggerCharacterLogin(const std::string &name, uint32 accountId, const std::string &ip);
+    void TriggerCharacterLogout(const std::string &name, uint32 accountId, const std::string &ip);
+    void TriggerCharacterCreated(const std::string &name, uint32 accountId, const std::string &ip);
+    void TriggerCharacterRenamed(const std::string &name, const std::string &oldname,
+                               uint32 accountId, const std::string &ip);
+    void TriggerCharacterDeleted(const std::string &name, uint32 accountId, const std::string &ip);
+    void TriggerCharacterDeletedFinally(const std::string &name, uint32 accountId, const std::string &ip);
+
+    void TriggerCommandUsed(const ChatCommand &command, uint32 accountId, const Player *player = NULL);
+    void TriggerCommandGMUsed(const ChatCommand &command, uint32 accountId, const Player *player = NULL);
+
+    void TriggerCreatureSpawned(const Creature &creature);
+    void TriggerCreatureDied(const Creature &creature);
+
+    void TriggerGameEventStarted(uint16 id, const GameEventData &gameEvent);
+    void TriggerGameEventStopped(uint16 id, const GameEventData &gameEvent);
+
+    void TriggerLootItemColoredDropped(const Player &player); // TODO: suuport
+    void TriggerLootItemQuestDropped(const Player &player); // TODO: support
+
+    void TriggerPlayerLevelReached(const Player &player, uint32 level, uint32 increase);
+//    void TriggerPlayerSkillLevelReached(const Player &player, uint32 level, uint32 increase);
+    void TriggerPlayerReputationLevelReached(const Player &player, uint32 level, uint32 increase);
+//    void TriggerPlayerPersonalArenaRatingGained(const Player &player, uint32 level, uint32 increase);
+
+    void TriggerPlayerTalentsReseted(const Player &player);
+
+    void TriggerPlayerSpellLearned(const Player &player); // TODO: support
+
+    void TriggerPlayerSpellCasted(const Player &player); // TODO: support
+    void TriggerPlayerDamageDealt(const Player &player); // TODO: support
+
+    void TriggerPlayerTeleported(const Player &player); // TODO: support
+    void TriggerPlayerFlightPathTaken(const Player &player); // TODO: support
+
+    void TriggerPlayerInstanceEntered(const Player &player); // TODO: support
+    void TriggerPlayerInstanceLeaved(const Player &player); // TODO: support
+    void TriggerPlayerInstanceIdReceived(const Player &player); // TODO: support
+
+    void TriggerPlayerRevived(const Player &player); // TODO: support
+    void TriggerPlayerDied(const Player &player); // TODO: support
+
+    void TriggerPlayerKilledByPlayer(const Player &player); // TODO: support
+    void TriggerPlayerKilledByCreature(const Player &player); // TODO: support
+    void TriggerPlayerKilledOtherPlayer(const Player &player); // TODO: support
+    void TriggerPlayerKilledOtherCreature(const Player &player); // TODO: support
+
+    void TriggerPlayerItemUsed(const Player &player, const Item &item, const ItemPosCountVec &position); // TODO: support
+    void TriggerPlayerItemEquipped(const Player &player, const Item &item, const ItemPosCountVec &position); // TODO: support
+    void TriggerPlayerItemReceived(const Player &player, const Item &item, const ItemPosCountVec &position); // TODO: test
+    void TriggerPlayerItemColoredReceived(const Player &player, const Item &item, const ItemPosCountVec &position); // TODO: test
+
+    void TriggerPlayerQuestCompleted(const Player &player); // TODO: support
+    void TriggerPlayerQuestAbandoned(const Player &player); // TODO: support
+    void TriggerPlayerQuestItemCollected(const Player &player); // TODO: support
+
+    void TriggerPlayerBattleGroundJoined(const Player &player); // TODO: support
+    void TriggerPlayerBattleGroundLeaved(const Player &player); // TODO: support
+
+    void TriggerPlayerBattleGroundWon(const Player &player); // TODO: support
+    void TriggerPlayerBattleGroundLost(const Player &player); // TODO: support
+    void TriggerPlayerDuellWon(const Player &player); // TODO: support
+    void TriggerPlayerDuellLost(const Player &player); // TODO: support
+
+    void TriggerPlayerArenaTeamJoined(const Player &player); // TODO: support
+    void TriggerPlayerArenaTeamLeaved(const Player &player); // TODO: support
+
+//    void TriggerPlayerGameObjectUsed(const Player &player); // TODO: support
+
+    void TriggerPlayerMailSend(const Player &player); // TODO: support
+    void TriggerPlayerTradeAccepted(const Player &player); // TODO: support
+    void TriggerPlayerTradeSpecialAccepted(const Player &player); // TODO: support
+    void TriggerPlayerMerchantTraded(const Player &player); // TODO: support
+
+    void TriggerPlayerMoneyGained(const Player &player); // TODO: support
+    void TriggerPlayerMoneyLooted(const Player &player); // TODO: support
+
+    void TriggerRaidCreated(const Player &player); // TODO: support
+    void TriggerRaidDisbanded(const Player &player); // TODO: support
 
     std::string NameOfEventType(EventType type) const;
 
-    EventConnect<ListenerCommand, EventInfoCommand> CommandEvents;
-    EventConnect<ListenerBoss, EventInfoCreature> BossEvents;
-    EventConnect<ListenerCreature, EventInfoCreature> CreatureEvents;
-    EventConnect<ListenerCharacter, EventInfoCharacter> CharacterEvents;
-    EventConnect<ListenerPlayerLoginout, EventInfoCharacter> PlayerLoginoutEvents;
-    EventConnect<ListenerGameEvent, EventInfoGameEvent> GameEventEvents;
-    EventConnect<ListenerBattleGround, EventInfoBattleGround> BattleGroundEvents;
-    EventConnect<ListenerPlayerLevel, EventInfoPlayerLevel> PlayerLevelEvents;
-    EventConnect<ListenerArenaTeam, EventInfoArenaTeam> ArenaTeamEvents;
-
-private:
-    void PrintEventToLog(const EventInfo& event) const;
+    EventConnect<ListenerArenaTeam> ArenaTeamEvents;
+    EventConnect<ListenerBattleGround> BattleGroundEvents;
+    EventConnect<ListenerBoss> BossEvents;
+    EventConnect<ListenerCharacter> CharacterEvents;
+    EventConnect<ListenerCommand> CommandEvents;
+    EventConnect<ListenerCreature> CreatureEvents;
+    EventConnect<ListenerGameEvent> GameEventEvents;
+    EventConnect<ListenerPlayerLevel> PlayerLevelEvents;
+    EventConnect<ListenerPlayerItem> PlayerItemEvents;
 };
 
 #define sEventSystemMgr MaNGOS::Singleton<EventSystemMgr>::Instance()

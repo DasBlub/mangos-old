@@ -1366,15 +1366,15 @@ void Creature::setDeathState(DeathState s)
 {
     if (s == JUST_DIED)
     {
-        sEventSystemMgr.TriggerCreatureEvent(EVENT_CREATURE_DIED, *this);
+        sEventSystemMgr.TriggerCreatureDied(*this);
         if (GetCreatureInfo()->rank == 3)
         { // Creature is a World Boss
-            sEventSystemMgr.TriggerBossEvent(EVENT_BOSS_DIED, *this);
+            sEventSystemMgr.TriggerBossDied(*this);
         }
     }
     else if (s == JUST_ALIVED)
     {
-        sEventSystemMgr.TriggerCreatureEvent(EVENT_CREATURE_SPAWNED, *this);
+        sEventSystemMgr.TriggerCreatureSpawned(*this);
     }
 
     if ((s == JUST_DIED && !m_isDeadByDefault) || (s == JUST_ALIVED && m_isDeadByDefault))

@@ -288,7 +288,7 @@ void WorldSession::LogoutPlayer(bool Save)
     if (_player)
     {
         sLog.outChar("Account: %d (IP: %s) Logout Character:[%s] (guid: %u)", GetAccountId(), GetRemoteAddress().c_str(), _player->GetName() ,_player->GetGUIDLow());
-        sEventSystemMgr.TriggerPlayerLoginoutEvent(EVENT_PLAYER_LOGOUT, _player->GetName(), GetAccountId(), GetRemoteAddress());
+        sEventSystemMgr.TriggerCharacterLogout(_player->GetName(), GetAccountId(), GetRemoteAddress());
 
         if (uint64 lguid = GetPlayer()->GetLootGUID())
             DoLootRelease(lguid);

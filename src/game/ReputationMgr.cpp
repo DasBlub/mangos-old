@@ -310,7 +310,7 @@ bool ReputationMgr::SetOneFactionReputation(FactionEntry const* factionEntry, in
             SetAtWar(&itr->second,true);
 
         m_player->ReputationChanged(factionEntry);
-        sEventSystemMgr.TriggerPlayerLevelEvent(EVENT_PLAYER_REPUTATION_LEVEL_REACHED, *m_player, standing, increaseAmount);
+        sEventSystemMgr.TriggerPlayerReputationLevelReached(*m_player, standing, increaseAmount);
 
         return true;
     }

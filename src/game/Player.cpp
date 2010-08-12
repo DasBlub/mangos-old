@@ -2497,7 +2497,7 @@ void Player::GiveLevel(uint32 level)
     if (Pet* pet = GetPet())
         pet->SynchronizeLevelWithOwner();
 
-    sEventSystemMgr.TriggerPlayerLevelEvent(EVENT_PLAYER_LEVEL_REACHED, *this, level, level - oldlevel);
+    sEventSystemMgr.TriggerPlayerLevelReached(*this, level, level - oldlevel);
 }
 
 void Player::UpdateFreeTalentPoints(bool resetIfNeed)
@@ -3649,7 +3649,7 @@ bool Player::resetTalents(bool no_cost)
     //FIXME: remove pet before or after unlearn spells? for now after unlearn to allow removing of talent related, pet affecting auras
     RemovePet(NULL,PET_SAVE_NOT_IN_SLOT, true);
 
-    sEventSystemMgr.TriggerPlayerLevelEvent(EVENT_PLAYER_TALENT_RESET, *this);
+    sEventSystemMgr.TriggerPlayerTalentsReseted(*this);
 
     return true;
 }
@@ -10083,6 +10083,12 @@ Item* Player::StoreNewItem( ItemPosCountVec const& dest, uint32 item, bool updat
         if(randomPropertyId)
             pItem->SetItemRandomProperties(randomPropertyId);
         pItem = StoreItem( dest, pItem, update );
+        sEventSystemMgr.TriggerPlayerItemReceived(*this, *pItem, dest);
+        const ItemPrototype *itemProt = pItem->getProto();
+        if (itemProt && itemProt->Quality > ITEM_QUALITY_NORMAL)
+        { // At least green item
+            sEventSystemMgr.TriggerPlayerItemColoredReceived(*this, *pItem, dest);
+        }
     }
     return pItem;
 }
