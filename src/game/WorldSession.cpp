@@ -36,6 +36,7 @@
 #include "BattleGroundMgr.h"
 #include "MapManager.h"
 #include "SocialMgr.h"
+#include "EventSystemMgr.h"
 
 /// WorldSession constructor
 WorldSession::WorldSession(uint32 id, WorldSocket *sock, AccountTypes sec, uint8 expansion, time_t mute_time, LocaleConstant locale) :
@@ -287,6 +288,7 @@ void WorldSession::LogoutPlayer(bool Save)
     if (_player)
     {
         sLog.outChar("Account: %d (IP: %s) Logout Character:[%s] (guid: %u)", GetAccountId(), GetRemoteAddress().c_str(), _player->GetName() ,_player->GetGUIDLow());
+        sEventSystemMgr.TriggerPlayerLoginoutEvent(EVENT_PLAYER_LOGOUT, _player->GetName(), GetAccountId(), GetRemoteAddress());
 
         if (uint64 lguid = GetPlayer()->GetLootGUID())
             DoLootRelease(lguid);

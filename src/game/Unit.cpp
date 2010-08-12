@@ -736,10 +736,10 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
         if (pVictim->GetTypeId() == TYPEID_PLAYER)
         {
             if (GetTypeId() == TYPEID_PLAYER) { // PvP situation
-                sEventSystemMgr.TriggerEvent(EVENT_PLAYER_KILLED_OTHER_PLAYER, 0, 0, this, pVictim);
-                sEventSystemMgr.TriggerEvent(EVENT_PLAYER_KILLED_BY_PLAYER, 0, 0, pVictim, this);
+//                sEventSystemMgr.TriggerEvent(EVENT_PLAYER_KILLED_OTHER_PLAYER, 0, 0, this, pVictim);
+//                sEventSystemMgr.TriggerEvent(EVENT_PLAYER_KILLED_BY_PLAYER, 0, 0, pVictim, this);
             } else { // PvE situation
-                sEventSystemMgr.TriggerEvent(EVENT_PLAYER_KILLED_BY_CREATURE, 0, 0, pVictim, this);
+//                sEventSystemMgr.TriggerEvent(EVENT_PLAYER_KILLED_BY_CREATURE, 0, 0, pVictim, this);
             }
 
             // only if not player and not controlled by player pet. And not at BG
@@ -754,7 +754,7 @@ uint32 Unit::DealDamage(Unit *pVictim, uint32 damage, CleanDamage const* cleanDa
         }
         else                                                // creature died
         {
-            sEventSystemMgr.TriggerEvent(EVENT_PLAYER_KILLED_OTHER_CREATURE, 0, 0, this, pVictim);
+//            sEventSystemMgr.TriggerEvent(EVENT_PLAYER_KILLED_OTHER_CREATURE, 0, 0, this, pVictim);
             // EVENT_CREATURE_DIED is handled in Creature.cpp
 
             DEBUG_FILTER_LOG(LOG_FILTER_DAMAGE,"DealDamageNotPlayer");
@@ -7749,7 +7749,7 @@ bool Unit::isSpellCrit(Unit *pVictim, SpellEntry const *spellProto, SpellSchoolM
                         continue;
                     switch((*i)->GetModifier()->m_miscvalue)
                     {
-                        // Shatter 
+                        // Shatter
                         case 849: if (pVictim->isFrozen()) crit_chance+= 10.0f; break;
                         case 910: if (pVictim->isFrozen()) crit_chance+= 20.0f; break;
                         case 911: if (pVictim->isFrozen()) crit_chance+= 30.0f; break;
@@ -8562,8 +8562,9 @@ void Unit::SetInCombatState(bool PvP, Unit* enemy)
         if (((Creature*)this)->AI())
             ((Creature*)this)->AI()->EnterCombat(enemy);
 
-        if(((Creature*)this)->GetCreatureInfo()->rank == 3) { // Creature is a World Boss
-            sEventSystemMgr.TriggerEvent(EVENT_BOSS_EVENT_STARTED, 0, 0, this);
+        if(((Creature*)this)->GetCreatureInfo()->rank == 3)
+        { // Creature is a World Boss
+            sEventSystemMgr.TriggerBossEvent(EVENT_BOSS_AGGRO, *((Creature*)this));
         }
     }
 }
@@ -8910,7 +8911,7 @@ void Unit::SetVisibility(UnitVisibility x)
     {
         // some auras requires visible target
         if(m_Visibility == VISIBILITY_GROUP_NO_DETECT || m_Visibility == VISIBILITY_OFF)
-        {   
+        {
             static const AuraType auratypes[] = {SPELL_AURA_BIND_SIGHT, SPELL_AURA_FAR_SIGHT, SPELL_AURA_NONE};
             for (AuraType const* type = &auratypes[0]; *type != SPELL_AURA_NONE; ++type)
             {
@@ -9497,7 +9498,10 @@ bool Unit::SelectHostileTarget()
     // enter in evade mode in other case
     ((Creature*)this)->AI()->EnterEvadeMode();
 
-    sEventSystemMgr.TriggerEvent(EVENT_CREATURE_EVADED, 0, 0, this);
+    if (((Creature*)this)->GetCreatureInfo()->rank == 3)
+    { // Creature is a World Boss
+        sEventSystemMgr.TriggerBossEvent(EVENT_BOSS_EVADED, *((Creature*)this));
+    }
 
     return false;
 }

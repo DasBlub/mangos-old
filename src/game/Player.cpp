@@ -1485,8 +1485,9 @@ void Player::setDeathState(DeathState s)
             CastSpell(this,SPELL_ID_PASSIVE_BATTLE_STANCE,true);
     }
 
-    if (s == JUST_DIED) {
-        sEventSystemMgr.TriggerEvent(EVENT_PLAYER_DIED, 0, 0, this);
+    if (s == JUST_DIED)
+    {
+//        sEventSystemMgr.TriggerPlayerStatusEvent(EVENT_PLAYER_DIED, this);
     }
 }
 
@@ -2437,6 +2438,7 @@ void Player::GiveXP(uint32 xp, Unit* victim)
 // Current player experience not update (must be update by caller)
 void Player::GiveLevel(uint32 level)
 {
+    uint32 oldlevel = getLevel();
     if ( level == getLevel() )
         return;
 
@@ -2494,6 +2496,8 @@ void Player::GiveLevel(uint32 level)
     // update level to hunter/summon pet
     if (Pet* pet = GetPet())
         pet->SynchronizeLevelWithOwner();
+
+    sEventSystemMgr.TriggerPlayerLevelEvent(EVENT_PLAYER_LEVEL_REACHED, *this, level, level - oldlevel);
 }
 
 void Player::UpdateFreeTalentPoints(bool resetIfNeed)
@@ -3645,6 +3649,8 @@ bool Player::resetTalents(bool no_cost)
     //FIXME: remove pet before or after unlearn spells? for now after unlearn to allow removing of talent related, pet affecting auras
     RemovePet(NULL,PET_SAVE_NOT_IN_SLOT, true);
 
+    sEventSystemMgr.TriggerPlayerLevelEvent(EVENT_PLAYER_TALENT_RESET, *this);
+
     return true;
 }
 
@@ -4269,7 +4275,7 @@ void Player::ResurrectPlayer(float restore_percent, bool applySickness)
     // update visibility of player for nearby cameras
     UpdateObjectVisibility();
 
-    sEventSystemMgr.TriggerEvent(EVENT_PLAYER_REVIVED, 0, 0, this);
+//    sEventSystemMgr.TriggerPlayerEvent(EVENT_PLAYER_REVIVED, this);
 
     if(!applySickness)
         return;
@@ -9679,7 +9685,7 @@ uint8 Player::CanEquipItem( uint8 slot, uint16 &dest, Item *pItem, bool swap, bo
                     if (!CanDualWield())
                         return EQUIP_ERR_CANT_DUAL_WIELD;
                 }
-                else if (type == INVTYPE_2HWEAPON) 
+                else if (type == INVTYPE_2HWEAPON)
                 {
                     return EQUIP_ERR_CANT_DUAL_WIELD;
                 }

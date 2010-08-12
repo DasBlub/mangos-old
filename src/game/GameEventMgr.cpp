@@ -26,6 +26,7 @@
 #include "Log.h"
 #include "MapManager.h"
 #include "Policies/SingletonImp.h"
+#include "EventSystemMgr.h"
 
 INSTANTIATE_SINGLETON_1(GameEventMgr);
 
@@ -160,8 +161,8 @@ void GameEventMgr::LoadFromDB()
         sLog.outString( ">> Loaded %u game events", count );
     }
 
-    std::map<uint16,int16> pool2event;                      // for check unique spawn event associated with pool 
-    std::map<uint32,int16> creature2event;                  // for check unique spawn event associated with creature 
+    std::map<uint16,int16> pool2event;                      // for check unique spawn event associated with pool
+    std::map<uint32,int16> creature2event;                  // for check unique spawn event associated with creature
     std::map<uint32,int16> go2event;                        // for check unique spawn event associated with gameobject
 
     // list only positive event top pools, filled at creature/gameobject loading
@@ -211,7 +212,7 @@ void GameEventMgr::LoadFromDB()
             ++count;
 
             // spawn objects at event can be grouped in pools and then affected pools have stricter requirements for this case
-            if (event_id > 0)                   
+            if (event_id > 0)
             {
                 creature2event[guid] = event_id;
 
@@ -289,7 +290,7 @@ void GameEventMgr::LoadFromDB()
             ++count;
 
             // spawn objects at event can be grouped in pools and then affected pools have stricter requirements for this case
-            if (event_id > 0)                   
+            if (event_id > 0)
             {
                 go2event[guid] = event_id;
 
@@ -487,6 +488,7 @@ uint32 GameEventMgr::Update()                               // return the next e
 void GameEventMgr::UnApplyEvent(uint16 event_id)
 {
     sLog.outString("GameEvent %u \"%s\" removed.", event_id, mGameEvent[event_id].description.c_str());
+    sEventSystemMgr.TriggerGameEventEvent(EVENT_GAMEEVENT_STOPPED, event_id, mGameEvent[event_id]);
     // un-spawn positive event tagged objects
     GameEventUnspawn(event_id);
     // spawn negative event tagget objects
@@ -504,6 +506,7 @@ void GameEventMgr::ApplyNewEvent(uint16 event_id)
         sWorld.SendWorldText(LANG_EVENTMESSAGE, mGameEvent[event_id].description.c_str());
 
     sLog.outString("GameEvent %u \"%s\" started.", event_id, mGameEvent[event_id].description.c_str());
+    sEventSystemMgr.TriggerGameEventEvent(EVENT_GAMEEVENT_STARTED, event_id, mGameEvent[event_id]);
     // spawn positive event tagget objects
     GameEventSpawn(event_id);
     // un-spawn negative event tagged objects
@@ -531,7 +534,7 @@ void GameEventMgr::GameEventSpawn(int16 event_id)
         CreatureData const* data = sObjectMgr.GetCreatureData(*itr);
         if (data)
         {
-            // negative event id for pool element meaning allow be used in next pool spawn 
+            // negative event id for pool element meaning allow be used in next pool spawn
             if (event_id < 0)
             {
                 if (uint16 pool_id = sPoolMgr.IsPartOfAPool<Creature>(*itr))
@@ -576,7 +579,7 @@ void GameEventMgr::GameEventSpawn(int16 event_id)
         GameObjectData const* data = sObjectMgr.GetGOData(*itr);
         if (data)
         {
-            // negative event id for pool element meaning allow be used in next pool spawn 
+            // negative event id for pool element meaning allow be used in next pool spawn
             if (event_id < 0)
             {
                 if (uint16 pool_id = sPoolMgr.IsPartOfAPool<GameObject>(*itr))

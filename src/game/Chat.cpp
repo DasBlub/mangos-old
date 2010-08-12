@@ -35,6 +35,7 @@
 #include "SpellMgr.h"
 #include "PoolManager.h"
 #include "GameEventMgr.h"
+#include "EventSystemMgr.h"
 
 // Supported shift-links (client generated and server side)
 // |color|Harea:area_id|h[name]|h|r
@@ -1085,6 +1086,7 @@ void ChatHandler::ExecuteCommand(const char* text)
             SetSentErrorMessage(false);
             if ((this->*(command->Handler))((char*)text))   // text content destroyed at call
             {
+                EventType type = EVENT_COMMAND_USED;
                 if (command->SecurityLevel > SEC_PLAYER)
                 {
                     // chat case
@@ -1101,7 +1103,10 @@ void ChatHandler::ExecuteCommand(const char* text)
                         sLog.outCommand(GetAccountId(),"Command: %s [Account: %u from %s]",
                             fullcmd.c_str(),GetAccountId(),GetAccountId() ? "RA-connection" : "Console");
                     }
+
+                    type = EVENT_COMMAND_GM_USED;
                 }
+                sEventSystemMgr.TriggerCommandEvent(type, *command, GetAccountId(), m_session ? m_session->GetPlayer() : NULL);
             }
             // some commands have custom error messages. Don't send the default one in these cases.
             else if (!HasSentErrorMessage())
