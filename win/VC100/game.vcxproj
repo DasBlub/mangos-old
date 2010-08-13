@@ -385,6 +385,7 @@
     <ClCompile Include="..\..\src\game\DestinationHolder.cpp" />
     <ClCompile Include="..\..\src\game\DuelHandler.cpp" />
     <ClCompile Include="..\..\src\game\DynamicObject.cpp" />
+    <ClCompile Include="..\..\src\game\EventSystemMgr.cpp" />
     <ClCompile Include="..\..\src\game\FleeingMovementGenerator.cpp" />
     <ClCompile Include="..\..\src\game\FollowerReference.cpp" />
     <ClCompile Include="..\..\src\game\GameEventMgr.cpp" />
@@ -526,6 +527,7 @@
     <ClInclude Include="..\..\src\game\DestinationHolder.h" />
     <ClInclude Include="..\..\src\game\DestinationHolderImp.h" />
     <ClInclude Include="..\..\src\game\DynamicObject.h" />
+    <ClInclude Include="..\..\src\game\EventSystemMgr.h" />
     <ClInclude Include="..\..\src\game\FleeingMovementGenerator.h" />
     <ClInclude Include="..\..\src\game\FollowerReference.h" />
     <ClInclude Include="..\..\src\game\FollowerRefManager.h" />

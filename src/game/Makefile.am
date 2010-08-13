@@ -108,6 +108,8 @@ libmangosgame_a_SOURCES = \
 	DuelHandler.cpp \
 	DynamicObject.cpp \
 	DynamicObject.h \
+	EventSystemMgr.cpp \
+	EventSystemMgr.h \
 	FleeingMovementGenerator.cpp \
 	FleeingMovementGenerator.h \
 	Formulas.h \
