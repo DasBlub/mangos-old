@@ -84,6 +84,9 @@
     <ClInclude Include="..\..\src\framework\Utilities\UnorderedMap.h">
       <Filter>Utilities</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\framework\Utilities\UnorderedSet.h">
+      <Filter>Utilities</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\framework\Utilities\LinkedReference\Reference.h">
       <Filter>Utilities\LinkedReference</Filter>
     </ClInclude>

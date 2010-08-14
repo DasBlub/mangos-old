@@ -582,6 +582,10 @@
 				RelativePath="..\..\src\framework\Utilities\UnorderedMap.h"
 				>
 			</File>
+			<File
+				RelativePath="..\..\src\framework\Utilities\UnorderedSet.h"
+				>
+			</File>
 			<Filter
 				Name="LinkedReference"
 				>

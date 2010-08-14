@@ -317,6 +317,7 @@
     <ClInclude Include="..\..\src\framework\Utilities\LinkedReference\RefManager.h" />
     <ClInclude Include="..\..\src\framework\Utilities\TypeList.h" />
     <ClInclude Include="..\..\src\framework\Utilities\UnorderedMap.h" />
+    <ClInclude Include="..\..\src\framework\Utilities\UnorderedSet.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\framework\Policies\MemoryManagement.cpp" />
