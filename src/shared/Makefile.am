@@ -37,6 +37,8 @@ libmangosshared_a_SOURCES = \
 	LockedQueue.h \
 	Log.cpp \
 	Log.h \
+	EventSystem.cpp \
+	EventSystem.h \
 	MemoryLeaks.cpp \
 	MemoryLeaks.h \
 	ProgressBar.cpp \

@@ -614,6 +614,18 @@
 			</File>
 		</Filter>
 		<Filter
+			Name="EventSystem"
+			>
+			<File
+				RelativePath="..\..\src\shared\EventSystem.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\src\shared\EventSystem.h"
+				>
+			</File>
+		</Filter>
+		<Filter
 			Name="Util"
 			>
 			<File
