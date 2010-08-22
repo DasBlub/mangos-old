@@ -315,6 +315,7 @@
     <ClInclude Include="..\..\src\framework\Utilities\LinkedList.h" />
     <ClInclude Include="..\..\src\framework\Utilities\LinkedReference\Reference.h" />
     <ClInclude Include="..\..\src\framework\Utilities\LinkedReference\RefManager.h" />
+    <ClInclude Include="..\..\src\framework\Utilities\MemberFunction.h" />
     <ClInclude Include="..\..\src\framework\Utilities\TypeList.h" />
     <ClInclude Include="..\..\src\framework\Utilities\UnorderedMapSet.h" />
   </ItemGroup>

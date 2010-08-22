@@ -575,6 +575,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\src\framework\Utilities\MemberFunction.h"
+				>
+			</File>
+			<File
 				RelativePath="..\..\src\framework\Utilities\TypeList.h"
 				>
 			</File>
