@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9,00"
+	Version="9.00"
 	Name="g3dlite"
 	ProjectGUID="{8072769E-CF10-48BF-B9E1-12752A5DAC6E}"
 	RootNamespace="sockets"
@@ -52,6 +52,7 @@
 				RuntimeLibrary="3"
 				BufferSecurityCheck="true"
 				EnableFunctionLevelLinking="true"
+				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="0"
 				AssemblerListingLocation=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
 				ObjectFile=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
@@ -125,6 +126,7 @@
 				RuntimeLibrary="3"
 				BufferSecurityCheck="true"
 				EnableFunctionLevelLinking="true"
+				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="0"
 				AssemblerListingLocation=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
 				ObjectFile=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
@@ -192,7 +194,7 @@
 				AdditionalIncludeDirectories="..\..\dep\include\g3dlite;..\..\dep\include\zlib"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_SECURE_SCL=0"
 				RuntimeLibrary="2"
-				EnableEnhancedInstructionSet="1"
+				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="0"
 				AssemblerListingLocation=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
 				ObjectFile=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
@@ -261,7 +263,7 @@
 				AdditionalIncludeDirectories="..\..\dep\include\g3dlite;..\..\dep\include\zlib"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_SECURE_SCL=0"
 				RuntimeLibrary="2"
-				EnableEnhancedInstructionSet="0"
+				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="0"
 				AssemblerListingLocation=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
 				ObjectFile=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
@@ -334,6 +336,7 @@
 				RuntimeLibrary="3"
 				BufferSecurityCheck="true"
 				EnableFunctionLevelLinking="true"
+				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="0"
 				AssemblerListingLocation=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
 				ObjectFile=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
@@ -407,6 +410,7 @@
 				RuntimeLibrary="3"
 				BufferSecurityCheck="true"
 				EnableFunctionLevelLinking="true"
+				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="0"
 				AssemblerListingLocation=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
 				ObjectFile=".\g3dlite__$(PlatformName)_$(ConfigurationName)\"
@@ -570,66 +574,6 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\dep\src\g3dlite\Box.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Crypto.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\format.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Matrix3.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Plane.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\System.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Triangle.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Vector3.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\Vector4.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\debugAssert.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\fileutils.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\g3dmath.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\g3dfnmatch.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\prompt.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\dep\src\g3dlite\stringutils.cpp"
-				>
-			</File>
-			<File
 				RelativePath="..\..\dep\src\g3dlite\Any.cpp"
 				>
 			</File>
@@ -646,6 +590,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\dep\src\g3dlite\Box.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\dep\src\g3dlite\Capsule.cpp"
 				>
 			</File>
@@ -658,7 +606,31 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\dep\src\g3dlite\Crypto.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\dep\src\g3dlite\Cylinder.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\debugAssert.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\fileutils.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\format.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\g3dfnmatch.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\g3dmath.cpp"
 				>
 			</File>
 			<File
@@ -674,11 +646,23 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\dep\src\g3dlite\Matrix3.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\dep\src\g3dlite\Matrix4.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\..\dep\src\g3dlite\MemoryManager.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\Plane.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\prompt.cpp"
 				>
 			</File>
 			<File
@@ -706,6 +690,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\dep\src\g3dlite\stringutils.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\System.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\dep\src\g3dlite\TextInput.cpp"
 				>
 			</File>
@@ -714,11 +706,23 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\dep\src\g3dlite\Triangle.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\dep\src\g3dlite\UprightFrame.cpp"
 				>
 			</File>
 			<File
 				RelativePath="..\..\dep\src\g3dlite\Vector2.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\Vector3.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\dep\src\g3dlite\Vector4.cpp"
 				>
 			</File>
 		</Filter>
