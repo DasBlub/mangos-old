@@ -77,20 +77,6 @@ const char * szWorkDirWmo = "./Buildings";
 
 // Local testing functions
 
-static void clreol()
-{
-    printf("\r                                                                              \r");
-}
-
-void strToLower(char* str)
-{
-    while(*str)
-    {
-        *str=tolower(*str);
-        ++str;
-    }
-}
-
 static const char * GetPlainName(const char * szFileName)
 {
     const char * szTemp;
@@ -223,10 +209,6 @@ int ExtractWmo()
         printf("\nExtract wmo complete (No (fatal) errors)\n");
 
     return success;
-}
-
-void ExtractMapsFromMpq()
-{
 }
 
 void ParsMapFiles()
@@ -539,7 +521,8 @@ int main(int argc, char ** argv)
         //nError = ERROR_SUCCESS;
     }
 
-    clreol();
+    printf("\n");
+
     if(!success)
     {
         printf("ERROR: Extract %s. Work NOT complete.\n   Precise vector data=%d.\nPress any key.\n",versionString, preciseVectorData);
