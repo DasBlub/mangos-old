@@ -313,7 +313,7 @@ HostileReference* ThreatContainer::selectNextVictim(Creature* pAttacker, Hostile
             }
         }
 
-        if(!pAttacker->IsOutOfThreatArea(target))           // skip non attackable currently targets
+        if(!pAttacker->isOutOfThreatArea(target))           // skip non attackable currently targets
         {
             if(pCurrentVictim)                              // select 1.3/1.1 better target in comparison current target
             {

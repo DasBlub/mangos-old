@@ -417,15 +417,15 @@ class MANGOS_DLL_SPEC Creature : public Unit
         bool canWalk() const { return GetCreatureInfo()->InhabitType & INHABIT_GROUND; }
         bool canSwim() const { return GetCreatureInfo()->InhabitType & INHABIT_WATER; }
         bool canFly()  const { return GetCreatureInfo()->InhabitType & INHABIT_AIR; }
-        ///// TODO RENAME THIS!!!!!
-        bool isCanTrainingOf(Player* player, bool msg) const;
-        bool isCanInteractWithBattleMaster(Player* player, bool msg) const;
-        bool isCanTrainingAndResetTalentsOf(Player* pPlayer) const;
-        bool IsOutOfThreatArea(Unit* pVictim) const;
-        bool IsImmunedToSpell(SpellEntry const* spellInfo);
-                                                            // redefine Unit::IsImmunedToSpell
-        bool IsImmunedToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index) const;
-                                                            // redefine Unit::IsImmunedToSpellEffect
+
+        bool isTrainerOf(Player* player, bool msg) const;
+        bool canInteractWithBattleMaster(Player* player, bool msg) const;
+        bool canTrainAndResetTalentsOf(Player* pPlayer) const;
+        bool isOutOfThreatArea(Unit* pVictim) const;
+        bool isImmuneToSpell(SpellEntry const* spellInfo);
+                                                            // redefine Unit::isImmuneToSpell
+        bool isImmuneToSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex index) const;
+                                                            // redefine Unit::isImmuneToSpellEffect
         bool isElite() const
         {
             if(isPet())
