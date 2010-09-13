@@ -421,7 +421,7 @@ class MANGOS_DLL_SPEC Aura
 
         void SetRemoveMode(AuraRemoveMode mode) { m_removeMode = mode; }
 
-        virtual Unit* GetTriggerTarget() const { return m_spellAuraHolder->GetTarget(); }
+        virtual Unit* GetTriggerTarget() const;
 
         // add/remove SPELL_AURA_MOD_SHAPESHIFT (36) linked auras
         void HandleShapeshiftBoosts(bool apply);

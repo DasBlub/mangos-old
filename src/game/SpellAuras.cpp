@@ -1079,6 +1079,19 @@ void Aura::HandleAddModifier(bool apply, bool Real)
     ReapplyAffectedPassiveAuras();
 }
 
+Unit* Aura::GetTriggerTarget() const
+{
+    if(SpellEntry const* triggeredSpellInfo = sSpellStore.LookupEntry(GetSpellProto()->EffectTriggerSpell[m_effIndex]))
+    {
+        if (GetSpellMaxRange(sSpellRangeStore.LookupEntry(triggeredSpellInfo->rangeIndex)))
+            return m_spellAuraHolder->GetTarget()->GetMap()->GetUnit(m_spellAuraHolder->GetTarget()->GetTypeId() == TYPEID_PLAYER ?
+                                                                                                                    ((Player*)m_spellAuraHolder->GetTarget())->GetSelection() :
+                                                                                                                    m_spellAuraHolder->GetTarget()->GetTargetGUID());
+    }
+
+    return m_spellAuraHolder->GetTarget();
+}
+
 void Aura::TriggerSpell()
 {
     const uint64& casterGUID = GetCasterGUID();
